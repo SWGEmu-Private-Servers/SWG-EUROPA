@@ -11,7 +11,7 @@ padawanTrialQuests = {
 		trialType = TRIAL_TALK,
 		trialNpc = "devaronian_male",
 		trialNpcName = "Kant Graf (an architect)",
-		targetNpc = "trials_gungan_captain",
+		targetNpc = "gungan_captain",
 		targetKillable = true
 	},
 	{

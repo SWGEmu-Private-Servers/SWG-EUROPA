@@ -15,6 +15,7 @@ ticketGiverBronell = CorvetteTicketGiverLogic:new {
 	giverName = "ticketGiverBronell",
 	faction = 0,
 	compensation = bronellCompensation,
+	badgeNumber = 117, --...has been recognized by the Hutt clan for work in eliminating key personnel at the Hutt's request.
 	menuComponent = "BronellIntelSearchMenuComponent",
 
 	first_location = "@conversation/corvette_bronell_neutral_assassin:s_94bc6e8f", -- Talus, yes? I mean, Talus?

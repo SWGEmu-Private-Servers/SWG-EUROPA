@@ -149,12 +149,8 @@ function SuiRadiationSensor:getSensor(pPlayer)
 end
 
 function SuiRadiationSensor:giveSensor(pPlayer)
-	if (pPlayer == nil) then
+	if (pPlayer == nil or self:hasSensor(pPlayer)) then
 		return
-	end
-	
-	if (self:hasSensor(pPlayer)) then
-		self:removeSensor(pPlayer)
 	end
 
 	local pDatapad = SceneObject(pPlayer):getSlottedObject("datapad")

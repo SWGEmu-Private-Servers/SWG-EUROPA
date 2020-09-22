@@ -79,7 +79,7 @@ function lifeDayScreenplay:removeWaypoint(pPlayer)
 			PlayerObject(pGhost):removeWaypoint(oldWaypointID, true)
 		end
 
-		deleteData(playerID .. "lifeDayWaypointID")
+		writeData(playerID .. "lifeDayWaypointID", 0)
 	end
 end
 

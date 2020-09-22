@@ -54,8 +54,8 @@ SprayShotCommand = {
 	  StateEffect(
 		DIZZY_EFFECT,
 		{},
-		{ "dizzy_defense" },
-		{ "jedi_state_defense", "resistance_states" },
+		{ "dizzy_defense", "resistance_states" },
+		{ "jedi_state_defense" },
 		60,
 		0,
 		30
@@ -63,8 +63,8 @@ SprayShotCommand = {
 	  StateEffect(
 		BLIND_EFFECT,
 		{},
-		{ "blind_defense" },
-		{ "jedi_state_defense", "resistance_states" },
+		{ "blind_defense", "resistance_states" },
+		{ "jedi_state_defense" },
 		100,
 		0,
 		30
@@ -72,8 +72,8 @@ SprayShotCommand = {
 	  StateEffect(
 		STUN_EFFECT,
 		{},
-		{ "stun_defense" },
-		{ "jedi_state_defense", "resistance_states" },
+		{ "stun_defense", "resistance_states" },
+		{ "jedi_state_defense" },
 		30,
 		0,
 		10

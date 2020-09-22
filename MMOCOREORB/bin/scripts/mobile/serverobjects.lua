@@ -1,8 +1,8 @@
+-- Custom content
+includeFile("../custom_scripts/mobile/serverobjects.lua")
+
 -- Conversations
 includeFile("conversations.lua")
-
--- Dress Groups - Must be loaded before mobiles
-includeFile("dressgroup/serverobjects.lua") 
 
 -- Creatures
 includeFile("corellia/serverobjects.lua")
@@ -45,6 +45,3 @@ includeFile("lair/serverobjects.lua")
 
 -- Outfits
 includeFile("outfits/serverobjects.lua")
-
--- Custom content - Loads last to allow for overrides
-includeFile("../custom_scripts/mobile/serverobjects.lua")

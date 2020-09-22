@@ -59,11 +59,6 @@ function SkillTrainer:sendSkillInfoSui(pPlayer, pNpc, skillName)
 
 	local skillManager = LuaSkillManager()
 
-	if (skillName == nil or skillName == "") then
-		printLuaError("Nil or empty skill name sent to SkillTrainer:sendSkillInfoSui for player " .. CreatureObject(pPlayer):getFirstName())
-		return
-	end
-
 	local pSkill = skillManager:getSkill(skillName)
 
 	if (pSkill == nil) then
@@ -152,11 +147,6 @@ end
 function SkillTrainer:getPrerequisiteTrainerSkills(trainerType)
 	local skills = trainerSkills[trainerType]
 	local noviceSkill = skills[1] -- Novice line
-
-	if (noviceSkill == nil or noviceSkill == "") then
-		printLuaError("Nil or empty skill grabbed from trainerSkills table SkillTrainer:getPrerequisiteTrainerSkills for trainer type " .. trainerType .. " with table size of " .. #skills)
-		return nil
-	end
 
 	local skillManager = LuaSkillManager()
 

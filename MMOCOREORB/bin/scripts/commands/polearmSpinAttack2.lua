@@ -58,8 +58,8 @@ PolearmSpinAttack2Command = {
 	  StateEffect( 
 		DIZZY_EFFECT, 
 		{}, 
-		{ "dizzy_defense" }, 
-		{ "jedi_state_defense", "resistance_states" },
+		{ "dizzy_defense", "resistance_states" }, 
+		{ "jedi_state_defense" }, 
 		75, 
 		0, 
 		25 

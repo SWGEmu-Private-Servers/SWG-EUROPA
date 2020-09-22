@@ -13,18 +13,6 @@ CorellianCorvette = ScreenPlay:new {
 		{ faction = "rebel", planet = "corellia", x = -6460, y = 5972 },
 	},
 
-	missionBadges = {
-		imperial_destroy = 112, -- ...has been recognized as an Elite Imperial Soldier, for bravery in the call of duty, eliminating a Rebel Blockade Runner.
-		imperial_rescue = 113, -- ...has been recognized for bravery in the face of danger, for rescuing Imperial Loyalists from the Rebel Menace, imprisoned on a Rebel Blockade Runner.
-		imperial_assassinate = 114, -- ...has been recognized as an elite Imperial soldier for work in eliminating key Rebel personnel aboard a fully functional Rebel Blockade Runner.
-		neutral_destroy = 115, -- ...has been recognized by the Hutt clan for work in destroying Corellian Corvette.
-		neutral_rescue = 116, -- ...has been recognized by the Hutt clan for work in freeing our imprisoned friends aboard a Corellian Corvette.
-		neutral_assassinate = 117, -- ...has been recognized by the Hutt clan for work in eliminating key personnel at the Hutt's request.
-		rebel_destroy = 118, -- ...has been recognized by the Alliance as an elite soldier for work in destroying a captured Rebel Blockade Runner.
-		rebel_rescue = 119, -- ...has been recognized by the Alliance as an elite soldier for work in rescuing imprisoned comrades aboard a captured Rebel Blockade Runner.
-		rebel_assassinate = 120, -- ...has been recognized by the Alliance as an elite soldier for work in eliminating key Imperial personnel on a captured Rebel Blockade Runner.
-	},
-
 	lockedRooms = { "elevator57", "meetingroom38", "armorybackroom55", "officerquarters63", "officerquarters64", "officerquarters65", "bridge66" },
 
 	electricTrapLocs = {
@@ -54,9 +42,9 @@ function CorellianCorvette:initialize()
 				printLuaError("CorellianCorvette:initialize tried using a corvette id that was nil or not a building: " .. building.buildingIds[j])
 			else
 				local corvetteID = SceneObject(pCorvette):getObjectID()
-				deleteData("corvetteActive:" .. corvetteID)
+				writeData("corvetteActive:" .. corvetteID, 0)
 				self:ejectAllPlayers(pCorvette)
-				deleteData("corvettePlayerCount:" .. corvetteID)
+				writeData("corvettePlayerCount:" .. corvetteID, 0)
 				createObserver(ENTEREDBUILDING, "CorellianCorvette", "onEnterCorvette", pCorvette)
 				createObserver(EXITEDBUILDING, "CorellianCorvette", "onExitCorvette", pCorvette)
 				num = num + 1
@@ -153,7 +141,7 @@ function CorellianCorvette:sendAuthorizationSui(pPlayer, pLeader, pCorvette)
 	local corvetteFaction = self:getBuildingFaction(pCorvette)
 	local factionCRC = self:getFactionCRC(corvetteFaction)
 
-	if (corvetteFaction ~= "neutral" and (not ThemeParkLogic:isInFaction(factionCRC, pPlayer) or ThemeParkLogic:isOnLeave(pPlayer) or TangibleObject(pPlayer):isChangingFactionStatus())) then
+	if (corvetteFaction ~= "neutral" and (not ThemeParkLogic:isInFaction(factionCRC, pPlayer) or ThemeParkLogic:isOnLeave(pPlayer))) then
 		return
 	end
 
@@ -879,13 +867,6 @@ function CorellianCorvette:transportPlayer(pPlayer)
 		return
 	end
 
-	local corvetteFaction = self:getBuildingFaction(pCorvette)
-	local factionCRC = self:getFactionCRC(corvetteFaction)
-
-	if (corvetteFaction ~= "neutral" and (not ThemeParkLogic:isInFaction(factionCRC, pPlayer) or ThemeParkLogic:isOnLeave(pPlayer) or TangibleObject(pPlayer):isChangingFactionStatus())) then
-		return
-	end
-
 	local pCell = BuildingObject(pCorvette):getCell(1)
 
 	if (pCell == nil) then
@@ -893,11 +874,6 @@ function CorellianCorvette:transportPlayer(pPlayer)
 	end
 
 	local cellID = SceneObject(pCell):getObjectID()
-	local player = CreatureObject(pPlayer)
-
-	if (player:isRidingMount()) then
-		player:dismount()
-	end
 	SceneObject(pPlayer):switchZone("dungeon1", -42.9, 0, 0.1, cellID)
 end
 
@@ -1023,36 +999,6 @@ end
 function CorellianCorvette:handleQuestSuccess(pCorvette)
 	self:broadcastToPlayers(pCorvette, "@dungeon/corvette:escape_pods") -- You have completed your assignment! Make your way to the escape pods before time expires and get off this ship!
 	self:writeDataToGroup(pCorvette, ":corvetteMissionComplete", 1)
-	self:giveBadgeToGroup(pCorvette)
-end
-
-function CorellianCorvette:giveBadgeToGroup(pCorvette)
-	local corvetteFaction = self:getBuildingFaction(pCorvette)
-	local questType = readStringData("corvetteQuestType:" .. SceneObject(pCorvette):getObjectID())
-	local missionType = corvetteFaction .. "_" .. questType
-	local badgeNum = self.missionBadges[missionType]
-
-	if (badgeNum == nil) then
-		printLuaError("Invalid mission type " .. missionType .. " trying to get Corellian Corvette badge.")
-		return
-	end
-
-	for i = 1, 66, 1 do
-		local pCell = BuildingObject(pCorvette):getCell(i)
-
-		if (pCell ~= nil) then
-			for j = 1, SceneObject(pCell):getContainerObjectsSize(), 1 do
-				local pObject = SceneObject(pCell):getContainerObject(j - 1)
-				if pObject ~= nil and SceneObject(pObject):isPlayerCreature() then
-					local pGhost = CreatureObject(pObject):getPlayerObject()
-
-					if (pGhost ~= nil and not PlayerObject(pGhost):hasBadge(badgeNum)) then
-						PlayerObject(pGhost):awardBadge(badgeNum)
-					end
-				end
-			end
-		end
-	end
 end
 
 function CorellianCorvette:broadcastToPlayers(pCorvette, message)
@@ -1208,12 +1154,6 @@ function CorellianCorvette:ejectPlayer(pPlayer)
 
 	local playerID = SceneObject(pPlayer):getObjectID()
 	local ownerID = readData(SceneObject(pCorvette):getObjectID() .. ":ownerID")
-
-	if (readData(playerID .. ":corvetteMissionComplete") == 1) then
-		local questType = readStringData("corvetteQuestType:" .. SceneObject(pCorvette):getObjectID())
-		local missionType = faction .. "_" .. questType
-		writeData(playerID .. ":corvetteComplete:" .. missionType, 1)
-	end
 
 	if (playerID == ownerID) then
 		if (readData(playerID .. ":corvetteMissionComplete") == 1) then

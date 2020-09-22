@@ -51,7 +51,7 @@ ForceIntimidate2Command = {
 	forceAttack = true,
 	splashDamage = true,
 	areaAction = true,
-	areaRange = 16,
+	areaRange = 32,
 	visMod = 25,
 
 	stateEffects = {
@@ -59,7 +59,7 @@ ForceIntimidate2Command = {
 		INTIMIDATE_EFFECT,
 		{},
 		{},
-		{ "jedi_state_defense" },
+		{ "force_defense" },
 		100,
 		0,
 		90

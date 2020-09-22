@@ -84,12 +84,8 @@ function CorvetteTicketGiverConvoHandler:getInitialScreen(pPlayer, pNpc, pConvoT
 	local playerID = SceneObject(pPlayer):getObjectID()
 	local activeQuest = getQuestStatus(playerID .. ":activeCorvetteQuest")
 	local activeStep = tonumber(getQuestStatus(playerID .. ":activeCorvetteStep"))
-	local missionType = self.ticketGiver.ticketInfo.faction .. "_" .. self.ticketGiver.ticketInfo.missionType
 
-	if (readData(playerID .. ":corvetteComplete:" .. missionType) == 1) then
-		deleteData(playerID .. ":corvetteComplete:" .. missionType)
-		return convoTemplate:getScreen("reward")
-	elseif (self.ticketGiver.faction ~= 0 and not ThemeParkLogic:isInFaction(self.ticketGiver.faction, pPlayer)) then
+	if (self.ticketGiver.faction ~= 0 and not ThemeParkLogic:isInFaction(self.ticketGiver.faction, pPlayer)) then
 		return convoTemplate:getScreen("no_faction")
 	elseif (activeQuest ~= nil and activeQuest ~= self.ticketGiver.giverName) then
 		return convoTemplate:getScreen("already_busy")

@@ -1,103 +1,106 @@
 victorQuestnCapitolConvoTemplate = ConvoTemplate:new {
 	initialScreen = "",
 	templateType = "Lua",
-	luaClassHandler = "victorQuestnCapitolConvoHandler",
+	luaClassHandler = "bestine_election_questn_conv_handler",
 	screens = {}
 }
-
-init_on_rival_quest = ConvoScreen:new {
-	id = "init_on_rival_quest",
+convo_start = ConvoScreen:new {
+	id = "convo_start",
 	leftDialog = "@conversation/victor_questn_capitol:s_4d313a", -- You're not supposed to be hanging around here, citizen. Move along.
 	stopConversation = "false",
 	options = {
-		{"@conversation/victor_questn_capitol:s_496168b6", "looking_for_evidence"}, -- I need your help...
+		{"@conversation/victor_questn_capitol:s_496168b6", "convo_start_give"}, -- I need your help...
+		{"@conversation/victor_questn_capitol:s_e50dbfc0", "questn_end"} -- Fine. I'm leaving.
 	}
 }
-victorQuestnCapitolConvoTemplate:addScreen(init_on_rival_quest);
+victorQuestnCapitolConvoTemplate:addScreen(convo_start);
 
-looking_for_evidence = ConvoScreen:new {
-	id = "looking_for_evidence",
+convo_start_give = ConvoScreen:new {
+	id = "convo_start_give",
 	leftDialog = "@conversation/victor_questn_capitol:s_ce8d51fb", -- Look-oh? Looking for evidence, are you? I may be able to help with that. It would be a perfect opportunity to get even with that Victor fellow. Never mind the details. Here, you might find this... 'list' entertaining. Be sure to say that you 'found' it.
 	stopConversation = "false",
-	options = {
-	--{"@conversation/victor_questn_capitol:s_b9b27823", ""}, -- Thank you.
-	}
-}
-victorQuestnCapitolConvoTemplate:addScreen(looking_for_evidence);
-
-give_evidence = ConvoScreen:new {
-	id = "give_evidence",
-	leftDialog = "@conversation/victor_questn_capitol:s_d638d2ec", -- Move along.
-	stopConversation = "true",
 	options = {}
 }
-victorQuestnCapitolConvoTemplate:addScreen(give_evidence);
+victorQuestnCapitolConvoTemplate:addScreen(convo_start_give);
 
-inv_full = ConvoScreen:new {
-	id = "inv_full",
-	leftDialog = "@conversation/victor_questn_capitol:s_d2df4599", -- I could help you... if you had enough room. Come back when you do and we'll talk.
-	stopConversation = "true",
-	options = {}
-}
-victorQuestnCapitolConvoTemplate:addScreen(inv_full);
-
-init_office_phase = ConvoScreen:new {
-	id = "init_office_phase",
-	leftDialog = "@conversation/victor_questn_capitol:s_c1bf1629", -- You'd be wise to join the Empire. The Rebel Alliance and its members have spiraled out of control. We're going to stomp them out of existence.
-	stopConversation = "true",
-	options = {}
-}
-victorQuestnCapitolConvoTemplate:addScreen(init_office_phase);
-
-init_election_phase = ConvoScreen:new {
-	id = "init_election_phase",
+no_business = ConvoScreen:new {
+	id = "no_business",
 	leftDialog = "@conversation/victor_questn_capitol:s_7dcdb445", -- There is an election going on at the capitol. You should participate. Otherwise... move along, citizen.
 	stopConversation = "true",
 	options = {}
 }
-victorQuestnCapitolConvoTemplate:addScreen(init_election_phase);
+victorQuestnCapitolConvoTemplate:addScreen(no_business);
 
-init_already_has_evidence = ConvoScreen:new {
-	id = "init_already_has_evidence",
+no_election = ConvoScreen:new {
+	id = "no_election",
+	leftDialog = "@conversation/victor_questn_capitol:s_c1bf1629", -- You'd be wise to join the Empire. The Rebel Alliance and its members have spiraled out of control. We're going to stomp them out of existence.
+	stopConversation = "true",
+	options = {}
+}
+victorQuestnCapitolConvoTemplate:addScreen(no_election);
+
+give_item = ConvoScreen:new {
+	id = "give_item",
+	leftDialog = "@conversation/victor_questn_capitol:s_d638d2ec", -- Move along.
+	stopConversation = "true",
+	options = {}
+}
+victorQuestnCapitolConvoTemplate:addScreen(give_item);
+
+already_has_evidence = ConvoScreen:new {
+	id = "already_has_evidence",
 	leftDialog = "@conversation/victor_questn_capitol:s_f688af52", -- Move along... oh, it's you again. Why haven't you used that list I gave... er... I mean, that you found... against Victor? Arrrgh! I was in a good mood after giving that to you, but now I'm upset again. Just go take care of it already.
 	stopConversation = "true",
 	options = {}
 }
-victorQuestnCapitolConvoTemplate:addScreen(init_already_has_evidence);
+victorQuestnCapitolConvoTemplate:addScreen(already_has_evidence);
 
-init_inv_was_full = ConvoScreen:new {
-	id = "init_inv_was_full",
-	leftDialog = "@conversation/victor_questn_capitol:s_f62e5a7d", -- Ah, you're back. Do you have enough room this time to get your precious evidence?
-	stopConversation = "false",
-	options = {
-	--{"@conversation/victor_questn_capitol:s_90ec63e0", "great_man"}, -- Yes, I do.
-	--{"@conversation/victor_questn_capitol:s_da9a29e9", "wasting_my_time"}, -- No, not yet.
-	}
-}
-victorQuestnCapitolConvoTemplate:addScreen(init_inv_was_full);
-
-was_full_give_evidence = ConvoScreen:new {
-	id = "was_full_give_evidence",
-	leftDialog = "@conversation/victor_questn_capitol:s_6ddb06b2", -- And here you are. Now... get lost.
+no_room = ConvoScreen:new {
+	id = "no_room",
+	leftDialog = "@conversation/victor_questn_capitol:s_d2df4599", -- I could help you... if you had enough room. Come back when you do and we'll talk.
 	stopConversation = "true",
 	options = {}
 }
-victorQuestnCapitolConvoTemplate:addScreen(was_full_give_evidence);
+victorQuestnCapitolConvoTemplate:addScreen(no_room);
 
-inv_still_full = ConvoScreen:new {
-	id = "inv_still_full",
+noroom_returned = ConvoScreen:new {
+	id = "noroom_returned",
+	leftDialog = "@conversation/victor_questn_capitol:s_f62e5a7d", -- Ah, you're back. Do you have enough room this time to get your precious evidence?
+	stopConversation = "false",
+	options = {}
+}
+victorQuestnCapitolConvoTemplate:addScreen(noroom_returned);
+
+noroom_returned_noroom = ConvoScreen:new {
+	id = "noroom_returned_noroom",
 	leftDialog = "@conversation/victor_questn_capitol:s_99ef56dc", -- No, you don't. Again, come back when you do. And next time, you'd better not waste my time.
 	stopConversation = "true",
 	options = {}
 }
-victorQuestnCapitolConvoTemplate:addScreen(inv_still_full);
+victorQuestnCapitolConvoTemplate:addScreen(noroom_returned_noroom);
 
-wasting_my_time = ConvoScreen:new {
-	id = "wasting_my_time",
+noroom_returned_reply = ConvoScreen:new {
+	id = "noroom_returned_reply",
 	leftDialog = "@conversation/victor_questn_capitol:s_42deb08e", -- Wasting my time is not a smart idea...
 	stopConversation = "true",
 	options = {}
 }
-victorQuestnCapitolConvoTemplate:addScreen(wasting_my_time);
+victorQuestnCapitolConvoTemplate:addScreen(noroom_returned_reply);
+
+noroom_returned_giveitem = ConvoScreen:new {
+	id = "noroom_returned_giveitem",
+	leftDialog = "@conversation/victor_questn_capitol:s_6ddb06b2", -- And here you are. Now... get lost.
+	stopConversation = "true",
+	options = {}
+}
+victorQuestnCapitolConvoTemplate:addScreen(noroom_returned_giveitem);
+
+questn_end = ConvoScreen:new {
+	id = "questn_end",
+	leftDialog = "@conversation/victor_questn_capitol:s_11cdd7b1", -- And it would be best, for your health, not to come back.
+	stopConversation = "true",
+	options = { }
+}
+victorQuestnCapitolConvoTemplate:addScreen(questn_end);
 
 addConversationTemplate("victorQuestnCapitolConvoTemplate", victorQuestnCapitolConvoTemplate);

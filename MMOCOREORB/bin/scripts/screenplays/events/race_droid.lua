@@ -286,7 +286,7 @@ function raceDroidEventPerk:notifyEnteredRacePoint(pRacePoint, pPlayer)
 	local maxPoints = self:getMaxWaypoints(pDroid)
 
 	if (currentPoint == maxPoints + 1) then -- End point
-		deleteData(pointOwnerID .. ":eventPerkRace:currentlyRacing")
+		writeData(pointOwnerID .. ":eventPerkRace:currentlyRacing", 0)
 		CreatureObject(pPlayer):sendSystemMessage("@event_perk:racing_finish_message")
 		local messageString = LuaStringIdChatParameter("@event_perk:racing_total_time")
 		messageString:setDF(timeDeltaDisplay)
@@ -469,7 +469,7 @@ function RaceDroidPerkMenuComponent:handleObjectMenuSelect(pSceneObject, pPlayer
 			return 0
 		end
 
-		deleteData(droidID .. ":setupStep")
+		writeData(droidID .. ":setupStep", 0)
 		raceDroidEventPerk:sendSetupSUI(pSceneObject, pPlayer)
 	elseif (selectedID == 121) then
 		raceDroidEventPerk:sendStoredData(pSceneObject, pPlayer)

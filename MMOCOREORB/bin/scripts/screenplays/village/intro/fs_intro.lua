@@ -148,7 +148,7 @@ function FsIntro:onLoggedIn(pPlayer)
 		curStep = self.SITHWAIT
 	end
 
-	if (curStep ~= self.OLDMANWAIT and curStep ~= self.OLDMANMEET and not OldManIntroEncounter:hasForceCrystal(pPlayer) and not QuestManager.hasActiveQuest(pPlayer, QuestManager.quests.FS_VILLAGE_ELDER)) then
+	if (curStep ~= self.OLDMANWAIT and curStep ~= self.OLDMANMEET and not OldManIntroEncounter:hasForceCrystal(pPlayer)) then
 		if (SithShadowIntroTheater:hasTaskStarted(pPlayer)) then
 			SithShadowIntroTheater:finish(pPlayer)
 		end
@@ -326,49 +326,4 @@ function FsIntro:startSithAttack(pPlayer)
 		createEvent(getRandomNumber(300, 900) * 1000, "FsIntro", "startSithAttack", pPlayer, "")
 		return
 	end
-end
-
-function FsIntro:completeVillageIntroFrog(pPlayer)
-	if (pPlayer == nil) then
-		return
-	end
-
-	local pInventory = SceneObject(pPlayer):getSlottedObject("inventory")
-
-	if (pInventory == nil) then
-		return
-	end
-
-	local pGhost = CreatureObject(pPlayer):getPlayerObject()
-
-	if (pGhost == nil) then
-		return
-	end
-
-	VillageJediManagerCommon.setJediProgressionScreenPlayState(pPlayer, VILLAGE_JEDI_PROGRESSION_GLOWING)
-
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.OLD_MAN_INITIAL)
-
-	giveItem(pInventory, "object/tangible/loot/quest/force_sensitive/force_crystal.iff", -1)
-
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.OLD_MAN_FORCE_CRYSTAL)
-
-	VillageJediManagerCommon.setJediProgressionScreenPlayState(pPlayer, VILLAGE_JEDI_PROGRESSION_HAS_CRYSTAL)
-
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.TWO_MILITARY)
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.LOOT_DATAPAD_1)
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.GOT_DATAPAD)
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.FS_THEATER_CAMP)
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.GOT_DATAPAD_2)
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.LOOT_DATAPAD_2)
-
-	QuestManager.completeQuest(pPlayer, QuestManager.quests.FS_VILLAGE_ELDER)
-
-	VillageJediManagerCommon.setJediProgressionScreenPlayState(pPlayer, VILLAGE_JEDI_PROGRESSION_HAS_VILLAGE_ACCESS)
-
-	if (not PlayerObject(pGhost):isJedi()) then
-		PlayerObject(pGhost):setJediState(1)
-	end
-
-	awardSkill(pPlayer, "force_title_jedi_novice")
 end

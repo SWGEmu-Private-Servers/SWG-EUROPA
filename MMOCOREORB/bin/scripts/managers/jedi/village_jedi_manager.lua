@@ -55,10 +55,6 @@ function VillageJediManager:onPlayerLoggedIn(pPlayer)
 
 	Glowing:onPlayerLoggedIn(pPlayer)
 
-	if (VillageJediManagerCommon.isVillageEligible(pPlayer) and not CreatureObject(pPlayer):hasSkill("force_title_jedi_novice")) then
-		awardSkill(pPlayer, "force_title_jedi_novice")
-	end
-
 	if (FsIntro:isOnIntro(pPlayer)) then
 		FsIntro:onLoggedIn(pPlayer)
 	end
@@ -123,14 +119,11 @@ end
 
 --Check to ensure force skill prerequisites are maintained
 function VillageJediManager:canSurrenderSkill(pPlayer, skillName)
-
-	if skillName == "force_title_jedi_rank_02" or skillName == "force_title_jedi_novice" then
-		CreatureObject(pPlayer):sendSystemMessage("@jedi_spam:revoke_force_title")
+	if skillName == "force_title_jedi_novice" and CreatureObject(pPlayer):getForceSensitiveSkillCount(true) > 0 then
 		return false
 	end
 
 	if string.find(skillName, "force_sensitive_") and CreatureObject(pPlayer):hasSkill("force_title_jedi_rank_02") and CreatureObject(pPlayer):getForceSensitiveSkillCount(false) <= 24 then
-		CreatureObject(pPlayer):sendSystemMessage("@jedi_spam:revoke_force_sensitive")
 		return false
 	end
 
@@ -155,16 +148,6 @@ function VillageJediManager:onFSTreeCompleted(pPlayer, branch)
 	if (VillageJediManagerCommon.getLearnedForceSensitiveBranches(pPlayer) >= NUMBEROFTREESTOMASTER) then
 		VillageJediManagerCommon.setJediProgressionScreenPlayState(pPlayer, VILLAGE_JEDI_PROGRESSION_COMPLETED_VILLAGE)
 		FsOutro:startOldMan(pPlayer)
-	end
-end
-
-function VillageJediManager:onSkillRevoked(pPlayer, pSkill)
-	if (pPlayer == nil) then
-		return
-	end
-
-	if (JediTrials:isOnPadawanTrials(pPlayer) or JediTrials:isOnKnightTrials(pPlayer)) then
-		JediTrials:droppedSkillDuringTrials(pPlayer, pSkill)
 	end
 end
 

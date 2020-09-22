@@ -23,13 +23,13 @@ victor_questn_cantina = Creature:new {
 	ferocity = 3,
 	pvpBitmask = NONE,
 	creatureBitmask = NONE,
-	optionsBitmask = INVULNERABLE,
+	optionsBitmask = AIENABLED + INVULNERABLE + CONVERSABLE,
 	diet = CARNIVORE,
 
 	templates = {"object/mobile/dressed_victor_questn_cantina.iff"},
 	lootGroups = {},
 	weapons = {},
-	conversationTemplate = "",
+	conversationTemplate = "victorQuestnCantinaConvoTemplate",
 	attacks = {}
 }
 
