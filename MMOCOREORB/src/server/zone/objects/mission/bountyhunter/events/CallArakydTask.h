@@ -13,7 +13,6 @@
 #include "server/zone/managers/structure/StructureManager.h"
 #include "server/zone/objects/structure/StructureObject.h"
 #include "server/zone/objects/creature/ai/AiAgent.h"
-#include "server/zone/CloseObjectsVector.h"
 
 namespace server {
 namespace zone {
@@ -35,7 +34,7 @@ public:
 		this->player = player;
 		this->objective = objective;
 		time = 20;
-		droid = nullptr;
+		droid = NULL;
 	}
 
 	~CallArakydTask() {
@@ -46,7 +45,7 @@ public:
 		ManagedReference<CreatureObject*> playerRef = player.get();
 		ManagedReference<BountyMissionObjective*> objectiveRef = objective.get();
 
-		if (playerRef == nullptr || objectiveRef == nullptr) {
+		if (playerRef == NULL || objectiveRef == NULL) {
 			return;
 		}
 
@@ -86,10 +85,10 @@ public:
 			break;
 		case -1: {
 			Locker olocker2(objectiveRef);
-			objectiveRef->setArakydDroid(nullptr);
+			objectiveRef->setArakydDroid(NULL);
 			olocker2.release();
 
-			if (droid != nullptr) {
+			if (droid != NULL) {
 				Locker clocker(droid, playerRef);
 				droid->destroyObjectFromWorld(true);
 			}
@@ -104,7 +103,7 @@ public:
 	Vector3 getLandingCoordinates(CreatureObject* player) {
 		Vector3 position = player->getPosition();
 
-		if (player->getZone() == nullptr || player->getZone()->getPlanetManager() == nullptr) {
+		if (player->getZone() == NULL || player->getZone()->getPlanetManager() == NULL) {
 			return position;
 		}
 
@@ -130,9 +129,9 @@ public:
 	}
 
 	bool noInterferingObjects(CreatureObject* player, const Vector3& position) {
-		CloseObjectsVector* vec = player->getCloseObjects();
+		CloseObjectsVector* vec = (CloseObjectsVector*) player->getCloseObjects();
 
-		if (vec == nullptr)
+		if (vec == NULL)
 			return true;
 
 		SortedVector<QuadTreeEntry*> closeObjects;
@@ -143,7 +142,7 @@ public:
 
 			SharedObjectTemplate* objectTemplate = obj->getObjectTemplate();
 
-			if (objectTemplate != nullptr) {
+			if (objectTemplate != NULL) {
 				float radius = objectTemplate->getNoBuildRadius();
 
 				if (radius > 0) {

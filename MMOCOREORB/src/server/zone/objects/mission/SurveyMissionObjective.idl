@@ -10,11 +10,8 @@ import server.zone.objects.mission.MissionObserver;
 import server.zone.objects.mission.MissionObject;
 import engine.core.ManagedObject;
 
-include engine.util.u3d.Vector3;
+include server.zone.objects.creature.CreatureObject;
 
-import server.zone.objects.creature.CreatureObject;
-
-@json
 class SurveyMissionObjective extends MissionObjective {
 	protected string spawnFamily;
 	protected unsigned int efficiency;

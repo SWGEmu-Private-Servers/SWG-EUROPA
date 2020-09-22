@@ -9,16 +9,13 @@ import server.zone.objects.creature.CreatureObject;
 import server.zone.objects.tangible.tasks.RemoveEventPerkItemTask;
 import server.zone.Zone;
 import system.lang.ref.Reference;
-include system.lang.Time;
-import server.zone.packets.object.ObjectMenuResponse;
 
-@json
-class Jukebox extends Terminal {
+class Jukebox extends Terminal {	
 	@weakReference
 	protected CreatureObject owner;
 
 	protected float radius;
-
+	
 	protected string curSong;
 
 	protected boolean isPlaying;

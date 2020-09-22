@@ -9,9 +9,7 @@
 #define TERRAINMANAGER_H_
 
 #include "terrain/TerrainAppearance.h"
-#ifdef COMPILE_CORE3_TESTS
 #include "gmock/gmock.h"
-#endif
 #include "TerrainCache.h"
 
 class ProceduralTerrainAppearance;
@@ -28,18 +26,19 @@ protected:
 
 public:
 	TerrainManager();
+
 	~TerrainManager();
 
 	bool initialize(const String& terrainFile);
 
-	inline bool getWaterHeight(float x, float y, float& waterHeight) const {
+	inline bool getWaterHeight(float x, float y, float& waterHeight) {
 		return terrainData->getWater(x, y, waterHeight);
 	}
 
 	/**
 	 *  	|--------------- | x1,y1
 	 *  	|----------------| <- stepping
-	 *	|----------------|
+	 *	    |----------------|
 	 *  	|----------------|
 	 *x0,y0 |----------------|
 	 */
@@ -53,11 +52,11 @@ public:
 	ProceduralTerrainAppearance* getProceduralTerrainAppearance();
 
 	float getCachedHeight(float x, float y);
-	float getUnCachedHeight(float x, float y) const;
+	float getUnCachedHeight(float x, float y);
 
 	virtual float getHeight(float x, float y);
 
-	float getMin() const {
+	float getMin() {
 		if (terrainData) {
 			return terrainData->getSize() / 2 * -1;
 		} else {
@@ -65,7 +64,7 @@ public:
 		}
 	}
 
-	float getMax() const {
+	float getMax() {
 		if (terrainData) {
 			return terrainData->getSize() / 2;
 		} else {
@@ -73,40 +72,38 @@ public:
 		}
 	}
 
-	float getSize() const {
+	float getSize() {
 		return terrainData->getSize();
 	}
 
-	int getCacheHitCount() const {
+	int getCacheHitCount() {
 		return heightCache->getHitCount();
 	}
 
-	int getCacheMissCount() const {
+	int getCacheMissCount() {
 		return heightCache->getMissCount();
 	}
 
-	int getCacheClearCount() const {
+	int getCacheClearCount() {
 		return heightCache->getClearCount();
 	}
 
-	int getCacheClearHeightsCount() const {
+	int getCacheClearHeightsCount() {
 		return heightCache->getClearHeightsCount();
 	}
 
-	int getCachedValuesCount() const {
+	int getCachedValuesCount() {
 		return heightCache->getSize();
 	}
 
-	int getCacheEvictCount() const {
+	int getCacheEvictCount() {
 		return heightCache->getEvictCount();
 	}
 };
 
-#ifdef COMPILE_CORE3_TESTS
 class MockTerrainManager : public TerrainManager {
 public:
 	MOCK_METHOD2(getHeight,float(float x, float y));
 };
-#endif
 
 #endif /* TERRAINMANAGER_H_ */

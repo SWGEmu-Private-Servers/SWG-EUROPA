@@ -16,11 +16,10 @@ import server.zone.objects.resource.ResourceContainer;
 import system.lang.Time;
 import server.zone.objects.scene.SceneObject;
 include server.zone.objects.installation.HopperList;
-include server.zone.CloseObjectsVector;
+include engine.util.u3d.CloseObjectsVector;
 
 import server.zone.objects.tangible.wearables.ArmorObject;
 
-@json
 class InstallationObject extends StructureObject {
 	protected transient SyncrhonizedUiListenInstallationTask syncUiTask;
 
@@ -113,7 +112,7 @@ class InstallationObject extends StructureObject {
 
 	@dirty
 	public abstract void updateOperators() {
-
+		
 	}
 
 	@preLocked
@@ -162,7 +161,6 @@ class InstallationObject extends StructureObject {
 	public native float getActualRate();
 
 	@dirty
-	@local
 	public native void broadcastToOperators(BasePacket packet);
 
 	@preLocked
@@ -245,15 +243,15 @@ class InstallationObject extends StructureObject {
 	* @pre { }
 	* @post { }
 	* @return returns true if object can attack this
-	*/
+	*/ 
 	@dirty
 	public native boolean isAttackableBy(CreatureObject object);
 
 	@preLocked
 	public native void createChildObjects();
 
-	@read
+	@dirty
 	public native float getHitChance();
-}
+}	
 
-
+	

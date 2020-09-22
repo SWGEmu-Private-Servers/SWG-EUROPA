@@ -14,16 +14,15 @@
 class CharacterBuilderTerminalTemplate : public SharedTangibleObjectTemplate {
 	Reference<CharacterBuilderMenuNode*> rootNode;
 	Vector<int> glowyBadgeIds;
-	Vector<String> villageBranchUnlocks;
 
 public:
-	CharacterBuilderTerminalTemplate() : rootNode(nullptr) {
+	CharacterBuilderTerminalTemplate() : rootNode(NULL) {
 	}
 
 	~CharacterBuilderTerminalTemplate() {
-		if (rootNode != nullptr) {
+		if (rootNode != NULL) {
 			//delete rootNode;
-			rootNode = nullptr;
+			rootNode = NULL;
 		}
 	}
 
@@ -37,14 +36,6 @@ public:
 		}
 
 		luaGlowyBadges.pop();
-
-		LuaObject luaBranchUnlocks = templateData->getObjectField("villageBranchUnlocks");
-
-		for (int i = 1; i <= luaBranchUnlocks.getTableSize(); ++i) {
-			villageBranchUnlocks.add(luaBranchUnlocks.getStringAt(i));
-		}
-
-		luaBranchUnlocks.pop();
 
 		LuaObject luaItemList = templateData->getObjectField("itemList");
 
@@ -61,16 +52,12 @@ public:
 		luaItemList.pop();
     }
 
-    inline const CharacterBuilderMenuNode* getItemList() const {
+    inline CharacterBuilderMenuNode* getItemList() const {
         return rootNode;
     }
 
-    inline const Vector<int>& getGlowyBadgeIds() const {
+    inline Vector<int> getGlowyBadgeIds() const {
         return glowyBadgeIds;
-    }
-
-    inline const Vector<String>& getVillageBranchUnlocks() const {
-        return villageBranchUnlocks;
     }
 };
 

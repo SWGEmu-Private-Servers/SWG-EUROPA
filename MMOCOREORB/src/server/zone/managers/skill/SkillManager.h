@@ -7,8 +7,8 @@
 #define SKILLMANAGER_H_
 
 #include "server/zone/objects/player/variables/Ability.h"
-#include "server/zone/objects/creature/variables/Skill.h"
 
+class Skill;
 class PerformanceManager;
 
 namespace server {
@@ -74,8 +74,8 @@ public:
 	bool awardSkill(const String& skillName, CreatureObject* creature, bool notifyClient = true, bool awardRequiredSkills = false, bool noXpRequired = false);
 	void awardDraftSchematics(Skill* skill, PlayerObject* ghost, bool notifyClient = true);
 
-	bool surrenderSkill(const String& skillName, CreatureObject* creature, bool notifyClient = true, bool verifyFrs = true);
-	void surrenderAllSkills(CreatureObject* creature, bool notifyClient = true, bool removeForceProgression = true);
+	bool surrenderSkill(const String& skillName, CreatureObject* creature, bool notifyClient = true);
+	void surrenderAllSkills(CreatureObject* creature, bool notifyClient = true);
 
 	/**
 	 * Checks if the player can learn the skill (fulfills skill prerequisites, enough skill points and enough XP).

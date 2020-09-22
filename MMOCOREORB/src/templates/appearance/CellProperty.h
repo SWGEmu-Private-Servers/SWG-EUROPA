@@ -70,7 +70,6 @@ protected:
 	int cellID;
 	Reference<BaseBoundingVolume*> boundingVolume;
 	Vector<Reference<CellPortal*> > portals;
-	SortedVector<int> connectedCells;
 
 public:
 	CellProperty();
@@ -85,23 +84,7 @@ public:
 		return appearanceTemplate;
 	}
 
-	void addConnectedCell(int cellID) {
-		connectedCells.put(cellID);
-	}
-
-	const SortedVector<int>& getConnectedCells() const {
-		return connectedCells;
-	}
-
-	bool hasConnectedCell(int cellID) const {
-		return connectedCells.contains(cellID);
-	}
-
-	const FloorMesh* getFloorMesh() const {
-		return floorMesh;
-	}
-
-	FloorMesh* getFloorMesh() {
+	FloorMesh* getFloorMesh() const {
 		return floorMesh;
 	}
 

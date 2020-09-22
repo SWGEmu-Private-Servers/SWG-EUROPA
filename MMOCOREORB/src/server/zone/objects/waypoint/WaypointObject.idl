@@ -1,14 +1,12 @@
 package server.zone.objects.waypoint;
 
 import server.zone.objects.intangible.IntangibleObject;
-import server.zone.objects.creature.CreatureObject;
 import engine.service.proto.BaseMessage;
 include server.zone.packets.scene.AttributeListMessage;
 include templates.SharedObjectTemplate;
 include system.lang.String;
 
 @lua
-@json
 class WaypointObject extends IntangibleObject {
 	protected unsigned int cellID; //?
 
@@ -19,7 +17,7 @@ class WaypointObject extends IntangibleObject {
 
 	protected byte color;
 	protected byte active;
-
+	
 	protected string questDetails;
 
 	protected int specialTypeID;
@@ -48,13 +46,11 @@ class WaypointObject extends IntangibleObject {
 	}
 
 	@local
-	@dirty
 	public native void loadTemplateData(SharedObjectTemplate templateData);
 
 	@local
-	@dirty
 	public native void insertToMessage(BaseMessage msg);
-
+	
 	@local
 	@dirty
 	public native void fillAttributeList(AttributeListMessage msg, CreatureObject object);
@@ -69,7 +65,7 @@ class WaypointObject extends IntangibleObject {
 		planetCRC = crc;
 	}
 
-	@read
+	@dirty
 	public unsigned int getPlanetCRC() {
 		return planetCRC;
 	}
@@ -94,7 +90,7 @@ class WaypointObject extends IntangibleObject {
 		specialTypeID = id;
 	}
 
-	@read
+	@dirty
 	public int getSpecialTypeID() {
 		return specialTypeID;
 	}
@@ -104,24 +100,24 @@ class WaypointObject extends IntangibleObject {
 		active = !active;
 	}
 
-	@read
+	@dirty
 	public boolean isActive() {
 		return active;
 	}
 
-	@read
+	@dirty
 	public byte getColor() {
 		return color;
 	}
 
-	@read
+	@dirty
 	public native string getDetailedDescription();
 
 	@preLocked
 	public void setDetailedDescription(final string desc) {
 		detailedDescription = desc;
 	}
-
+	
 	@preLocked
 	public void setQuestDetails(final string detail) {
 		questDetails = detail;

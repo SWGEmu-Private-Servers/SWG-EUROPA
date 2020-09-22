@@ -8,14 +8,11 @@ import server.zone.packets.object.ObjectMenuResponse;
 import server.zone.objects.tangible.tool.ToolTangibleObject;
 import server.zone.packets.scene.AttributeListMessage;
 import server.zone.objects.creature.CreatureObject;
-import server.zone.objects.tangible.TangibleObject;
 import system.util.Vector;
 include templates.SharedObjectTemplate;
 import server.zone.objects.scene.variables.ContainerPermissions;
 import server.zone.objects.manufactureschematic.ManufactureSchematic;
-import server.zone.objects.manufactureschematic.craftingvalues.CraftingValues;
 
-@json
 class CraftingTool extends ToolTangibleObject {
 
 	protected string status;
@@ -132,7 +129,7 @@ class CraftingTool extends ToolTangibleObject {
 	}
 
 	/**
-	 * Sends message to player if the tool is unable
+	 * Sends message to player if the tool is unable 
 	 * to start
 	 */
 	@dirty

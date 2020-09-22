@@ -9,10 +9,7 @@ import server.zone.objects.creature.CreatureObject;
 import server.zone.objects.tangible.pharmaceutical.StimPack;
 include templates.tangible.RangedStimPackTemplate;
 include server.zone.objects.manufactureschematic.craftingvalues.CraftingValues;
-include templates.SharedObjectTemplate;
-include system.lang.String;
 
-@json
 class RangedStimPack extends StimPack {
 	protected float range;
 	protected float area;
@@ -72,7 +69,7 @@ class RangedStimPack extends StimPack {
 			return 0;
 		} else {
 			player.sendCommand("healdamage", String.valueOf(super.getObjectID()), player.getTargetID());
-
+			
 			return 0;
 		}
 	}
@@ -120,7 +117,7 @@ class RangedStimPack extends StimPack {
 			modSkill = creature.getSkillMod("healing_range");
 		}
 
-		float value = (100 + rangeMod * modSkill) / 100 * range;
+		float value = (100 + rangeMod * modSkill) / 100 * range; 
 
 		return value;
 	}

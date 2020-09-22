@@ -8,7 +8,6 @@ import engine.log.Logger;
 import engine.util.Facade;
 import server.zone.objects.creature.CreatureObject;
 include server.zone.objects.scene.SessionFacadeType;
-include system.util.Vector;
 
 class MigrateStatsSession extends Facade {
 	@weakReference
@@ -34,7 +33,7 @@ class MigrateStatsSession extends Facade {
 	
 	public int cancelSession() {
 		CreatureObject creo = creature;
-		if (creo) {
+		if (creo != null) {
 			creo.dropActiveSession(SessionFacadeType.MIGRATESTATS);
 		}
 		
@@ -62,7 +61,7 @@ class MigrateStatsSession extends Facade {
 	public void migrateStats() {
 		CreatureObject creo = creature;
 
-		if (!creo) {
+		if (creo == null) {
 			cancelSession();
 			return;
 		}

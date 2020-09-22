@@ -6,7 +6,6 @@
 #define STRUCTUREPAYUNCONDEMNMAINTENANCESUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
-#include "server/zone/managers/credit/CreditManager.h"
 
 class StructurePayUncondemnMaintenanceSuiCallback : public SuiCallback {
 public:
@@ -21,14 +20,14 @@ public:
 
 		ManagedReference<SceneObject*> obj = sui->getUsingObject().get();
 
-		if (obj == nullptr || !obj->isStructureObject()) {
+		if (obj == NULL || !obj->isStructureObject()) {
 			creature->sendSystemMessage("@player_structure:invalid_target"); // "Your original structure target is no longer valid. Aborting..."
 			return;
 		}
 
 		StructureObject* structure = cast<StructureObject*>(obj.get());
 
-		if (structure == nullptr) {
+		if (structure == NULL) {
 			creature->sendSystemMessage("@player_structure:invalid_target"); // "Your original structure target is no longer valid. Aborting..."
 			return;
 		}
@@ -45,18 +44,15 @@ public:
 			return;
 		}
 
-		ManagedReference<CreditObject*> creditObj = creature->getCreditObject();
-		{
-			Locker locker(creditObj);
-			structure->payMaintenance(uncondemnCost, creditObj , false);
-		}
+		structure->payMaintenance(uncondemnCost, creature, false);
+
 		//Give the player 10 minutes to pay more maintenance before sending out new mails.
 		structure->scheduleMaintenanceTask(10 * 60);
 
 		if (structure->isBuildingObject()) {
 			BuildingObject* building = cast<BuildingObject* >(structure);
 
-			if (building != nullptr) {
+			if (building != NULL) {
 				//Remove ***** Condemned Structure ***** sign name.
 				building->updateSignName(true);
 			}

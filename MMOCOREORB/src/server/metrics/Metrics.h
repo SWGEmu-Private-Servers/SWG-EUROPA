@@ -16,87 +16,74 @@ namespace metrics {
 		String path;
 		bool active;
 
-	public:
-		Metrics() {
-			active = ConfigManager::instance()->shouldUseMetrics();
-		}
-
-		Metrics(const char* path) : path(path) {
-			active = ConfigManager::instance()->shouldUseMetrics();
-		}
-
-		Metrics(String&& path) : path(std::move(path)) {
-			active = ConfigManager::instance()->shouldUseMetrics();
-		}
-
-		Metrics(const String& path) : path(path) {
-			active = ConfigManager::instance()->shouldUseMetrics();
-		}
-
-		void publishMetrics(const String& name, const char* value, const char* type) const {
-			if (!active)
-				return;
-
-			MetricsManager::Result result = MetricsManager::instance()->publish(
-					String(path + "." + name).toCharArray(),
-					value,
-					type);
-
-			static Logger logger("Metrics", Logger::INFO);
-
-			switch (result) {
-				case MetricsManager::NO_CONNECTION:
-					logger.debug("Metrics failed to get connection.");
-					return;
-				case MetricsManager::SOCKET_EXCEPTION:
-					logger.debug("Metrics encountered a socket exception.");
-					return;
-				case MetricsManager::GENERAL_ERROR:
-					logger.debug("Metrics encountered a general error.");
-					return;
-				case MetricsManager::SUCCESS:
-					logger.debug("Metrics success!");
-				default:
-					return;
-			};
-
-		}
-
-		void publishGauge(const String& name, const String& value) const {
-			publishMetrics(name, value.toCharArray(), "g");
-		}
-
-		// TODO: Add a publish that can send a sample rate (a ratio of the
-		// number of actual samples the server will use)
-		void publishCounter(const String& name, const String& value) const {
-			publishMetrics(name, value.toCharArray(), "c");
-		}
-
-		void publishTimer(const String& name, const String& value) const {
-			publishMetrics(name, value.toCharArray(), "ms");
-		}
-
-		void publishHist(const String& name, const String& value) const {
-			publishMetrics(name, value.toCharArray(), "h");
-		}
-
-		void publishMeter(const String& name, const String& value) const {
-			publishMetrics(name, value.toCharArray(), "m");
-		}
-
-		const String& getMetricsPath() const {
-			return path;
-		}
-
-		bool areMetricsActive() const {
-			return active;
-		}
-
 	protected:
 		void setPath(const String& s) {
 			path = s;
 		}
 
+	public:
+		void publish(const String& name, const String& value, const String& type) {
+			if (!active) return;
+
+			MetricsManager::Result result = MetricsManager::instance()->publish(
+					String(path + "." + name).toCharArray(),
+					value.toCharArray(),
+					type.toCharArray());
+
+			// This is commented to allow for easy debugging. It can be quite
+			// verbose.
+			/*switch (result) {
+				case MetricsManager::NO_CONNECTION:
+					System::out << "Metrics failed to get connection." << endl;
+					return;
+				case MetricsManager::SOCKET_EXCEPTION:
+					System::out << "Metrics encountered a socket exception." << endl;
+					return;
+				case MetricsManager::GENERAL_ERROR:
+					System::out << "Metrics encountered a general error." << endl;
+					return;
+				case MetricsManager::SUCCESS:
+					System::out << "Metrics success!" << endl;
+				default:
+					return;
+			};*/
+		}
+
+		void publishGauge(const String& name, const String& value) {
+			publish(name, value, "g");
+		}
+
+		// TODO: Add a publish that can send a sample rate (a ratio of the
+		// number of actual samples the server will use)
+		void publishCounter(const String& name, const String& value) {
+			publish(name, value, "c");
+		}
+
+		void publishTimer(const String& name, const String& value) {
+			publish(name, value, "ms");
+		}
+
+		void publishHist(const String& name, const String& value) {
+			publish(name, value, "h");
+		}
+
+		void publishMeter(const String& name, const String& value) {
+			publish(name, value, "m");
+		}
+
+	public:
+		Metrics() {
+			this->path = "";
+			active = ConfigManager::instance()->shouldUseMetrics();
+		}
+		Metrics(const char* path) {
+			this->path = String(path);
+			active = ConfigManager::instance()->shouldUseMetrics();
+		}
+		Metrics(String path) {
+			this->path = path;
+			active = ConfigManager::instance()->shouldUseMetrics();
+		}
 	};
 } // namespace metrics
 } // namespace server

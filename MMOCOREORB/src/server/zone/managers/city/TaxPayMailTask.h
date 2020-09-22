@@ -10,8 +10,6 @@
 
 #include "server/chat/ChatManager.h"
 #include "server/zone/objects/region/CityRegion.h"
-#include "server/zone/managers/credit/CreditManager.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
 
 class TaxPayMailTask : public Task {
 	Vector<uint64> citizens;
@@ -38,39 +36,46 @@ public:
 
 		auto zoneServer = chatManager->getZoneServer();
 
-		ManagedReference<PlayerManager*> playerManager = zoneServer->getPlayerManager();
-
 		for (int i = 0; i < citizens.size(); ++i) {
 			uint64 citizenOID = citizens.get(i);
 
-			String name = playerManager->getPlayerName(citizenOID);
+			ManagedReference<SceneObject*> obj = zoneServer->getObject(citizenOID);
 
-			if (name.isEmpty())
+			if (obj == NULL)
 				continue;
 
-			params.setTO(name);
+			CreatureObject* citizen = obj->asCreatureObject();
 
-			TransactionLog trx(citizenOID, TrxCode::CITYINCOMETAX, incomeTax, false);
+			if (citizen == NULL || !citizen->isPlayerCreature())
+				continue;
 
-			if (!CreditManager::subtractBankCredits(citizenOID, incomeTax)) {
+			Locker lock(citizen);
+
+			params.setTO(citizen->getDisplayedName());
+
+			int bank = citizen->getBankCredits();
+
+			if (bank < incomeTax) {
+				lock.release();
+
 				// Failed to Pay Income Tax!
 				params.setStringId("city/city", "income_tax_nopay_body");
-				chatManager->sendMail("@city/city:new_city_from", "@city/city:income_tax_nopay_subject", params, name, nullptr);
+				chatManager->sendMail("@city/city:new_city_from", "@city/city:income_tax_nopay_subject", params, citizen->getFirstName(), NULL);
 
 				// Citizen Failed to Pay Income Tax
 				params.setStringId("city/city", "income_tax_nopay_mayor_body");
-				chatManager->sendMail("@city/city:new_city_from", "@city/city:income_tax_nopay_mayor_subject", params, mayorName, nullptr);
-
-				trx.abort() << "Unable to pay income tax to city";
+				chatManager->sendMail("@city/city:new_city_from", "@city/city:income_tax_nopay_mayor_subject", params, mayorName, NULL);
 
 				continue;
-			} else {
-				trx.commit();
 			}
+
+			citizen->subtractBankCredits(incomeTax);
+
+			lock.release();
 
 			// City Income Tax Paid
 			params.setStringId("city/city", "income_tax_paid_body");
-			chatManager->sendMail("@city/city:new_city_from", "@city/city:income_tax_paid_subject", params, name, nullptr);
+			chatManager->sendMail("@city/city:new_city_from", "@city/city:income_tax_paid_subject", params, citizen->getFirstName(), NULL);
 
 			totalIncome += incomeTax;
 		}

@@ -10,14 +10,13 @@
 
 #include "engine/engine.h"
 #include "server/zone/objects/scene/SceneObject.h"
-#include "server/zone/QuadTreeEntry.h"
+#include "engine/util/u3d/QuadTreeEntry.h"
 
 class MinefieldZoneComponent : public ZoneComponent {
 
 public:
 	void notifyPositionUpdate(SceneObject* sceneObject, QuadTreeEntry* entry) const;
 	void notifyInsertToZone(SceneObject* sceneObject, Zone* zne) const;
-	void notifyDissapear(SceneObject* sceneObject, QuadTreeEntry* entry) const;
 };
 
 

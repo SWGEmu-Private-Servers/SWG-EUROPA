@@ -26,7 +26,7 @@ public:
 
 		PlayerObject* ghost = creature->getPlayerObject();
 
-		if (ghost == nullptr)
+		if (ghost == NULL)
 			return GENERALERROR;
 
 		if (ghost->getJediState() < 2 || !creature->hasSkill("force_title_jedi_rank_02"))
@@ -37,14 +37,6 @@ public:
 		if (planet == "") {
 			setJediTrainer(ghost);
 			planet = ghost->getTrainerZoneName();
-		} else {
-			ZoneServer* zoneServer = ServerCore::getZoneServer();
-			Zone* trainerZone = zoneServer->getZone(planet);
-
-			if (trainerZone == nullptr) {
-				setJediTrainer(ghost);
-				planet = ghost->getTrainerZoneName();
-			}
 		}
 
 		uint32 planetCRC = planet.hashCode();
@@ -71,7 +63,7 @@ public:
 	static void setJediTrainer(PlayerObject* ghost) {
 		ZoneServer* zServ = ghost->getZoneServer();
 
-		if (zServ == nullptr)
+		if (zServ == NULL)
 			return;
 
 		Vector<ManagedReference<SceneObject*> > trainers;
@@ -105,17 +97,12 @@ public:
 		while (!found) {
 			SceneObject* trainer = trainers.get(System::random(size - 1));
 
-			if (trainer == nullptr)
+			if (trainer == NULL)
 				continue;
 
 			CreatureObject* trainerCreo = trainer->asCreatureObject();
 
-			if (trainerCreo == nullptr)
-				continue;
-
-			Zone* trainerZone = trainerCreo->getZone();
-
-			if (trainerZone == nullptr || trainerZone->getZoneName() == "tutorial")
+			if (trainerCreo == NULL)
 				continue;
 
 			if (!(trainerCreo->getOptionsBitmask() & OptionBitmask::CONVERSE))
@@ -124,10 +111,10 @@ public:
 			ManagedReference<CityRegion*> city = trainerCreo->getCityRegion().get();
 
 			// Make sure it's not a player-city trainer.
-			if (city != nullptr && !city->isClientRegion())
+			if (city != NULL && !city->isClientRegion())
 				continue;
 
-			zoneName = trainerZone->getZoneName();
+			zoneName = trainerCreo->getZone()->getZoneName();
 			coords = trainerCreo->getWorldPosition();
 			found = true;
 

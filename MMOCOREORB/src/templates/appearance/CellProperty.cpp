@@ -6,7 +6,7 @@ void CellPortal::readObject(IffStream* iff) {
 	Chunk* chunk = iff->openChunk();
 
 	uint32 formType = chunk->getChunkID();
-
+	
 	if (formType == '0004' || formType == '0005') {
 
 		if (formType == '0005') {
@@ -42,20 +42,18 @@ void CellPortal::readObject(IffStream* iff) {
 }
 
 CellProperty::CellProperty() : Object(), Logger("CellProperty"), numberOfPortals(0),
-	floorMesh(nullptr), appearanceTemplate(nullptr), cellID(0), boundingVolume(nullptr) {
-	connectedCells.setNoDuplicateInsertPlan();
+	floorMesh(NULL), appearanceTemplate(NULL), cellID(0), boundingVolume(NULL) {
 
 }
 
-CellProperty::CellProperty(int cellID) : Logger("CellProperty"), numberOfPortals(0), floorMesh(nullptr),
-	appearanceTemplate(nullptr), cellID(cellID), boundingVolume(nullptr) {
-	connectedCells.setNoDuplicateInsertPlan();
+CellProperty::CellProperty(int cellID) : Logger("CellProperty"), numberOfPortals(0), floorMesh(NULL),
+	appearanceTemplate(NULL), cellID(cellID), boundingVolume(NULL) {
 }
 
 CellProperty::CellProperty(const CellProperty& c) : Object(), Logger("CellProperty"),
 	name(c.name), numberOfPortals(c.numberOfPortals), floorMesh(c.floorMesh), appearanceTemplate(c.appearanceTemplate),
 	cellID(c.cellID), boundingVolume(c.boundingVolume), portals(c.portals) {
-	connectedCells.setNoDuplicateInsertPlan();
+
 }
 
 CellProperty& CellProperty::operator=(const CellProperty& c) {
@@ -69,7 +67,6 @@ CellProperty& CellProperty::operator=(const CellProperty& c) {
 	cellID = c.cellID;
 	boundingVolume = c.boundingVolume;
 	portals = c.portals;
-	connectedCells = c.connectedCells;
 
 	return *this;
 }
@@ -90,7 +87,7 @@ void CellProperty::loadVersion5(IffStream* iffStream) {
 
 	if (meshFile.length() > 1) {
 		AppearanceTemplate* app = TemplateManager::instance()->getAppearanceTemplate(meshFile);
-		if (app != nullptr) {
+		if (app != NULL) {
 			appearanceTemplate = app;
 		} else {
 			info("Error reading mesh " + meshFile, true);
@@ -143,7 +140,7 @@ void CellProperty::loadVersion4(IffStream* iffStream) {
 
 	if (meshFile.length() > 1) {
 		AppearanceTemplate* app = TemplateManager::instance()->getAppearanceTemplate(meshFile);
-		if (app != nullptr) {
+		if (app != NULL) {
 			appearanceTemplate = app;
 		} else {
 			info("Error reading mesh " + meshFile, true);

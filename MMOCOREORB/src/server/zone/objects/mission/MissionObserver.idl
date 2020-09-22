@@ -9,11 +9,6 @@ import engine.util.Observable;
 import server.zone.objects.mission.MissionObjective;
 import engine.log.Logger;
 
-import engine.core.ManagedObject;
-include engine.log.Logger;
-include engine.util.u3d.Vector3;
-
-@json
 class MissionObserver extends Observer implements Logger {
 	@weakReference
 	protected MissionObjective missionObjective;

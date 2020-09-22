@@ -48,14 +48,7 @@ public:
 		else if (raceFile.indexOf("zabrak") != -1)
 			species = CreatureObject::ZABRAK;
 
-		PlayerManager *playerManager = server->getPlayerManager();
-		String name;
-		int limiter = 0;
-		do {
-			name = nameManager->makeCreatureName(1, species);
-		} while (playerManager->existsName(name) && ++limiter < 20);
-
-		BaseMessage* msg = new ClientRandomNameResponse(raceFile, name);
+		BaseMessage* msg = new ClientRandomNameResponse(raceFile, nameManager->makeCreatureName(1, species));
 		client->sendMessage(msg);
 	}
 };

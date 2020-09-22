@@ -7,10 +7,14 @@
 
 #include "server/zone/objects/building/BuildingObject.h"
 #include "server/zone/Zone.h"
+#include "server/zone/ZoneServer.h"
 #include "server/zone/ZoneProcessServer.h"
 #include "server/zone/ZoneClientSession.h"
+#include "server/zone/objects/cell/CellObject.h"
+#include "server/zone/objects/creature/CreatureObject.h"
 
 #include "templates/building/SharedBuildingObjectTemplate.h"
+#include "templates/appearance/PortalLayout.h"
 
 #include "server/zone/objects/player/sui/messagebox/SuiMessageBox.h"
 #include "server/zone/objects/tangible/sign/SignObject.h"
@@ -24,18 +28,21 @@
 #include "server/zone/managers/vendor/VendorManager.h"
 #include "server/zone/managers/collision/CollisionManager.h"
 
+
 #include "server/zone/objects/player/sui/callbacks/StructurePayAccessFeeSuiCallback.h"
 #include "server/zone/objects/building/tasks/RevokePaidAccessTask.h"
+#include "server/zone/objects/region/CityRegion.h"
 #include "tasks/EjectObjectEvent.h"
 #include "server/zone/managers/gcw/GCWManager.h"
 
+#include "server/zone/objects/tangible/terminal/components/TurretControlTerminalDataComponent.h"
 #include "server/zone/objects/installation/InstallationObject.h"
 #include "server/zone/managers/creature/CreatureManager.h"
 #include "server/zone/objects/creature/ai/AiAgent.h"
 
 #include "server/zone/objects/building/components/GCWBaseContainerComponent.h"
 #include "server/zone/objects/building/components/EnclaveContainerComponent.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
+#include "templates/appearance/AppearanceTemplate.h"
 
 void BuildingObjectImplementation::initializeTransientMembers() {
 	StructureObjectImplementation::initializeTransientMembers();
@@ -58,14 +65,14 @@ void BuildingObjectImplementation::loadTemplateData(
 	SharedBuildingObjectTemplate* buildingData =
 			dynamic_cast<SharedBuildingObjectTemplate*> (templateData);
 
-	if (buildingData == nullptr)
+	if (buildingData == NULL)
 		return;
 
 	totalCellNumber = buildingData->getTotalCellNumber();
 
-	const PortalLayout* portalLayout = templateData->getPortalLayout();
+	PortalLayout* portalLayout = templateData->getPortalLayout();
 
-	if (portalLayout != nullptr)
+	if (portalLayout != NULL)
 		totalCellNumber = portalLayout->getFloorMeshNumber() - 1; //remove the exterior floor
 
 	publicStructure = buildingData->isPublicStructure();
@@ -78,39 +85,22 @@ void BuildingObjectImplementation::createContainerComponent() {
 }
 
 void BuildingObjectImplementation::notifyInsertToZone(Zone* zone) {
-	StringBuffer newName;
-
-	newName << "BuildingObject"
-		<< " 0x" << String::hexvalueOf((int64)getObjectID())
-		<< " owner: " << String::valueOf(getOwnerObjectID())
-		<< " " << String::valueOf((int)getPositionX()) << " " << String::valueOf((int)getPositionY())
-		<< " " << zone->getZoneName()
-		<< " " << String::valueOf((int)getPositionZ())
-		<< " " << getObjectName()->getFullPath();
-
-	setLoggingName(newName.toString());
-
 	StructureObjectImplementation::notifyInsertToZone(zone);
 
 	Locker locker(zone);
 
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		CellObject* cell = cells.get(i);
 
 		cell->onBuildingInsertedToZone(asBuildingObject());
 	}
-
-#if ENABLE_STRUCTURE_JSON_EXPORT
-	if (getOwnerObjectID() != 0)
-		info("Exported to " + exportJSON("notifyInsertToZone"), true);
-#endif // DEBUG_STRUCTURE_MAINT
 }
 
 int BuildingObjectImplementation::getCurrentNumberOfPlayerItems() {
 	int items = 0;
 
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		ManagedReference<CellObject*> cell = cells.get(i);
 
 		items += cell->getCurrentNumberOfPlayerItems();
 	}
@@ -120,9 +110,10 @@ int BuildingObjectImplementation::getCurrentNumberOfPlayerItems() {
 
 void BuildingObjectImplementation::createCellObjects() {
 	for (int i = 0; i < totalCellNumber; ++i) {
-		auto newCell = getZoneServer()->createObject(0xAD431713, getPersistenceLevel());
 
-		if (newCell == nullptr || !newCell->isCellObject()) {
+		Reference<SceneObject*> newCell = getZoneServer()->createObject(0xAD431713, getPersistenceLevel());
+
+		if (newCell == NULL || !newCell->isCellObject()) {
 			error("could not create cell");
 			continue;
 		}
@@ -132,7 +123,7 @@ void BuildingObjectImplementation::createCellObjects() {
 		if (!transferObject(newCell, -1))
 			error("could not add cell");
 
-		addCell(static_cast<CellObject*>(newCell.get()), i + 1);
+		addCell(cast<CellObject*>(newCell.get()), i + 1);
 	}
 
 	updateToDatabase();
@@ -140,17 +131,17 @@ void BuildingObjectImplementation::createCellObjects() {
 
 void BuildingObjectImplementation::sendContainerObjectsTo(SceneObject* player, bool forceLoad) {
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		CellObject* cell = cells.get(i);
 
 		cell->sendTo(player, true);
 	}
 }
 
 void BuildingObjectImplementation::sendTo(SceneObject* player, bool doClose, bool forceLoadContainer) {
-	debug("building sendto..");
+	//info("building sendto..", true);
 
 	if (!isStaticBuilding()) { // send Baselines etc..
-		debug("sending building object create");
+		//info("sending building object create");
 
 		SceneObjectImplementation::sendTo(player, doClose, forceLoadContainer);
 	} //else { // just send the objects that are in the building, without the cells because they are static in the client
@@ -159,14 +150,14 @@ void BuildingObjectImplementation::sendTo(SceneObject* player, bool doClose, boo
 
 	// for some reason client doesnt like when you send cell creatures while sending cells?
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		CellObject* cell = cells.get(i);
 
-		auto perms = cell->getContainerPermissions();
+		ContainerPermissions* perms = cell->getContainerPermissions();
 
 		if (!perms->hasInheritPermissionsFromParent()) {
-			CreatureObject* creo = player->asCreatureObject();
+			CreatureObject* creo = cast<CreatureObject*>(player);
 
-			if (creo != nullptr && !cell->checkContainerPermission(creo, ContainerPermissions::WALKIN)) {
+			if (creo != NULL && !cell->checkContainerPermission(creo, ContainerPermissions::WALKIN)) {
 				BaseMessage* perm = new UpdateCellPermissionsMessage(cell->getObjectID(), false);
 				player->sendMessage(perm);
 			}
@@ -176,11 +167,11 @@ void BuildingObjectImplementation::sendTo(SceneObject* player, bool doClose, boo
 			continue;
 
 		for (int j = 0; j < cell->getContainerObjectsSize(); ++j) {
-			auto containerObject = cell->getContainerObject(j);
+			ManagedReference<SceneObject*> containerObject = cell->getContainerObject(j);
 
-			if (containerObject != nullptr && ((containerObject->isCreatureObject() && publicStructure) || player == containerObject
-							|| (closeObjects != nullptr && closeObjects->contains(containerObject.get()))))
-				containerObject->sendTo(player, true, false);
+			if (containerObject != NULL && ((containerObject->isCreatureObject() && publicStructure) || player == containerObject
+							|| (closeObjects != NULL && closeObjects->contains(containerObject.get()))))
+						containerObject->sendTo(player, true, false);
 		}
 	}
 	//}
@@ -189,7 +180,7 @@ void BuildingObjectImplementation::sendTo(SceneObject* player, bool doClose, boo
 bool BuildingObjectImplementation::hasTemplateEjectionPoint() {
 	SharedBuildingObjectTemplate* buildingTemplate = templateObject.castTo<SharedBuildingObjectTemplate*>();
 
-	if (buildingTemplate == nullptr)
+	if (buildingTemplate == NULL)
 		return false;
 
 	Vector3 ejectionPoint = buildingTemplate->getEjectionPoint();
@@ -200,13 +191,14 @@ bool BuildingObjectImplementation::hasTemplateEjectionPoint() {
 		return true;
 }
 
-Vector3 BuildingObjectImplementation::getTemplateEjectionPoint() const {
+Vector3 BuildingObjectImplementation::getTemplateEjectionPoint() {
 	SharedBuildingObjectTemplate* buildingTemplate = templateObject.castTo<SharedBuildingObjectTemplate*>();
 
 	return buildingTemplate->getEjectionPoint();
 }
 
 Vector3 BuildingObjectImplementation::getEjectionPoint() {
+
 	Vector3 worldPosition = getWorldPosition();
 
 	if (hasTemplateEjectionPoint()) {
@@ -227,58 +219,28 @@ Vector3 BuildingObjectImplementation::getEjectionPoint() {
 	} else {
 		SharedObjectTemplate *shot = getObjectTemplate();
 
-		if (shot != nullptr && shot->isSharedBuildingObjectTemplate()) {
+		if (shot != NULL && shot->isSharedBuildingObjectTemplate()) {
 			SharedBuildingObjectTemplate *templateData = static_cast<SharedBuildingObjectTemplate*>(shot);
-			const PortalLayout* portalLayout = templateData->getPortalLayout();
+			PortalLayout* portalLayout = templateData->getPortalLayout();
 
-			if (portalLayout != nullptr) {
+			if (portalLayout != NULL) {
 				const Vector<Reference<CellProperty*> >& cells = portalLayout->getCellProperties();
 				if(cells.size() > 0) {
 					const CellProperty* cell = cells.get(0);
-					for (int i=0; i<cell->getNumberOfPortals(); i++) {
+					if (cell->getNumberOfPortals() > 0) {
 						const CellPortal* portal = cell->getPortal(0);
 						const AABB& box = portalLayout->getPortalBounds(portal->getGeometryIndex());
-						const MeshData *geom = portalLayout->getPortalGeometry(portal->getGeometryIndex());
 
-						if (geom == nullptr)
-							continue;
-
-						const Vector<MeshTriangle>& tris = *geom->getTriangles();
-						const Vector<Vector3>& verts = *geom->getVerts();
-						if (tris.size() == 0)
-							continue;
-
-						const MeshTriangle& tri = tris.get(0);
-						const int* ind = tri.getVerts();
-						Vector3 normal;
-						Vector3 v[3] = { verts.get(ind[0]), verts.get(ind[1]), verts.get(ind[2]) };
-						if (!portal->isWindingCCW()) {
-							normal = (v[0] - v[1]).crossProduct(v[0]-v[2]);
-						} else {
-							normal = (v[0] - v[2]).crossProduct(v[0]-v[1]);
-						}
-						normal.normalize();
-
-						Vector3 floor = box.center() - Vector3(0, box.extents().getY(), 0);
-						floor += normal * templateData->getEjectDistance();
-
+						Vector3 center = box.center();
 						Matrix4 transform;
 
-						transform.setRotationMatrix(direction.toMatrix3());
-						transform.setTranslation(getPositionX(), getPositionZ(), getPositionY());
+						Quaternion directionRecast(direction.getW(), direction.getX(), direction.getY(), -direction.getZ());
 
-						// this works, i have no idea why we need it. I give up.
-						// Matrix4 transpose
-						Matrix4 orig = transform;
-						transform[0][1] = orig[1][0];
-						transform[0][2] = orig[2][0];
-						transform[1][0] = orig[0][1];
-						transform[1][2] = orig[2][1];
-						transform[2][0] = orig[0][2];
-						transform[2][1] = orig[1][2];
+						transform.setRotationMatrix(directionRecast.toMatrix3());
+						transform.setTranslation(getPositionX(), getPositionZ(), -getPositionY());
 
-						Vector3 flipped = transform * floor;
-						return Vector3(flipped[0], flipped[2], CollisionManager::getWorldFloorCollision(flipped[0], flipped[2], flipped[1], getZone(), false));
+						Vector3 dPos = (Vector3(center.getX(), center.getY(), -center.getZ()) * transform);
+						return Vector3(dPos.getX(), -dPos.getZ(), dPos.getY());
 					}
 				}
 			}
@@ -293,12 +255,12 @@ Vector3 BuildingObjectImplementation::getEjectionPoint() {
 
 void BuildingObjectImplementation::notifyRemoveFromZone() {
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		CellObject* cell = cells.get(i);
 
 		//cell->resetCurrentNumerOfPlayerItems();
 
 		while (cell->getContainerObjectsSize() > 0) {
-			auto obj = cell->getContainerObject(0);
+			ManagedReference<SceneObject*> obj = cell->getContainerObject(0);
 
 			Locker objLocker(obj);
 
@@ -312,10 +274,11 @@ void BuildingObjectImplementation::notifyRemoveFromZone() {
 
 			Locker contLocker(cell->getContainerLock());
 
-			auto cont = cell->getContainerObjects();
+			VectorMap<uint64, ManagedReference<SceneObject*> >* cont =
+					cell->getContainerObjects();
 
 			if (cont->size() > 0) {
-				auto test = cell->getContainerObject(0);
+				Reference<SceneObject*> test = cell->getContainerObject(0);
 
 				if (test == obj) {
 					cont->remove(0);
@@ -324,27 +287,10 @@ void BuildingObjectImplementation::notifyRemoveFromZone() {
 		}
 	}
 
-	for (int i = 0; i < childCreatureObjects.size(); ++i) {
-		ManagedReference<CreatureObject*> child = childCreatureObjects.get(i);
-
-		if (child == nullptr)
-			continue;
-
-		Locker locker(child);
-
-		AiAgent* ai = child->asAiAgent();
-
-		if (ai != nullptr) {
-			ai->setRespawnTimer(0);
-		}
-
-		child->destroyObjectFromWorld(true);
-	}
-
 	childObjects.removeAll();
 	childCreatureObjects.removeAll();
 
-	if (signObject != nullptr) {
+	if (signObject != NULL) {
 		Locker signLocker(signObject);
 
 		signObject->destroyObjectFromWorld(true);
@@ -355,7 +301,7 @@ void BuildingObjectImplementation::notifyRemoveFromZone() {
 
 void BuildingObjectImplementation::sendDestroyTo(SceneObject* player) {
 	if (!isStaticBuilding()) {
-		debug("sending building object destroy");
+		info("sending building object destroy");
 
 		SceneObjectImplementation::sendDestroyTo(player);
 	}
@@ -363,7 +309,7 @@ void BuildingObjectImplementation::sendDestroyTo(SceneObject* player) {
 
 void BuildingObjectImplementation::sendBaselinesTo(SceneObject* player) {
 	//send buios here
-	debug("sending building baselines");
+	//info("sending building baselines",true);
 
 	BaseMessage* buio3 = new TangibleObjectMessage3(asBuildingObject());
 	player->sendMessage(buio3);
@@ -373,9 +319,9 @@ void BuildingObjectImplementation::sendBaselinesTo(SceneObject* player) {
 }
 
 bool BuildingObjectImplementation::isCityBanned(CreatureObject* player) {
-	auto thisRegion  = this->getCityRegion().get();
+	ManagedReference<CityRegion*> thisRegion  = this->getCityRegion().get();
 
-	if (thisRegion != nullptr)
+	if (thisRegion != NULL)
 		if (thisRegion->isBanned(player->getObjectID()))
 			return true;
 
@@ -385,7 +331,7 @@ bool BuildingObjectImplementation::isCityBanned(CreatureObject* player) {
 bool BuildingObjectImplementation::isAllowedEntry(CreatureObject* player) {
 	GCWBaseContainerComponent* conComp = containerComponent.castTo<GCWBaseContainerComponent*>();
 
-	if (conComp != nullptr) {
+	if (conComp != NULL) {
 		if (factionBaseType == GCWManager::STATICFACTIONBASE)
 			return true;
 
@@ -394,14 +340,14 @@ bool BuildingObjectImplementation::isAllowedEntry(CreatureObject* player) {
 
 	EnclaveContainerComponent* encComp = containerComponent.castTo<EnclaveContainerComponent*>();
 
-	if (encComp != nullptr) {
-		return encComp->checkContainerPermission(asBuildingObject(), player, ContainerPermissions::WALKIN);
+	if (encComp != NULL) {
+		return checkContainerPermission(player, ContainerPermissions::WALKIN);
 	}
 
 	if (!isClientObject()) {
 		PlayerObject* ghost = player->getPlayerObject().get();
 
-		if (ghost != nullptr && ghost->hasPvpTef()) {
+		if (ghost != NULL && ghost->hasPvpTef()) {
 			return false;
 		}
 	}
@@ -419,43 +365,46 @@ bool BuildingObjectImplementation::isAllowedEntry(CreatureObject* player) {
 }
 
 void BuildingObjectImplementation::notifyObjectInsertedToZone(SceneObject* object) {
-	debug("BuildingObjectImplementation::notifyInsertToZone");
+	//info("BuildingObjectImplementation::notifyInsertToZone", true);
 
-	auto closeObjectsVector = getCloseObjects();
-	Vector<QuadTreeEntry*> closeObjects(closeObjectsVector->size(), 10);
-	closeObjectsVector->safeCopyReceiversTo(closeObjects, CloseObjectsVector::CREOTYPE);
+	auto closeObjects = getCloseObjects();
 
-	for (int i = 0; i < closeObjects.size(); ++i) {
-		SceneObject* obj = static_cast<SceneObject*>(closeObjects.get(i));
+	for (int i = 0; i < closeObjects->size(); ++i) {
+		SceneObject* obj = static_cast<SceneObject*>(closeObjects->get(i).get());
 
 		if ((obj->isCreatureObject() && isPublicStructure()) || isStaticBuilding()) {
+
 			if (obj->getRootParent() != _this.getReferenceUnsafe()) {
-				if (object->getCloseObjects() != nullptr)
+
+				if (object->getCloseObjects() != NULL)
 					object->addInRangeObject(obj, false);
 				else
 					object->notifyInsert(obj);
 
-				if (obj->getCloseObjects() != nullptr)
+				//object->sendTo(obj, true);
+
+				if (obj->getCloseObjects() != NULL)
 					obj->addInRangeObject(object, false);
 				else
 					obj->notifyInsert(object);
+
+				//obj->sendTo(object, true);
 			}
 		}
 	}
 
 	notifyInsert(object);
 
-	if (object->getCloseObjects() != nullptr)
+	if (object->getCloseObjects() != NULL)
 		object->addInRangeObject(asBuildingObject(), false);
 
 	addInRangeObject(object, false);
 
 	Zone* zone = getZone();
 
-	if (zone != nullptr) {
-		TangibleObject* tano = object->asTangibleObject();
-
-		if (tano != nullptr) {
+	if (zone != NULL) {
+		if (object->isTangibleObject()) {
+			TangibleObject* tano = object->asTangibleObject();
 			zone->updateActiveAreas(tano);
 		}
 
@@ -466,46 +415,44 @@ void BuildingObjectImplementation::notifyObjectInsertedToZone(SceneObject* objec
 }
 
 void BuildingObjectImplementation::notifyInsert(QuadTreeEntry* obj) {
-#if DEBUG_COV
-	if (getObjectID() == 88) { // Theed Cantina
-		info("BuildingObjectImplementation::notifyInsert(" + String::valueOf(obj->getObjectID()) + ")", true);
+	//info("BuildingObjectImplementation::notifyInsert");
+	//remove when done
+	//return;
 
-		auto c = static_cast<CreatureObject*>(obj);
+	SceneObject* scno = cast<SceneObject*>(obj);
 
-		if (c != nullptr)
-			c->info("BuildingObjectImplementation::notifyInsert into " + String::valueOf(getObjectID()), true);
-	}
-#endif // DEBUG_COV
-
-	auto scno = static_cast<SceneObject*>(obj);
+	if (scno == NULL)
+		return;
 
 	bool objectInThisBuilding = scno->getRootParent() == asBuildingObject();
 
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		CellObject* cell = cells.get(i);
 
 		if (!cell->isContainerLoaded())
 			continue;
 
 		try {
 			for (int j = 0; j < cell->getContainerObjectsSize(); ++j) {
-				auto child = cell->getContainerObject(j);
+				ManagedReference<SceneObject*> child = cell->getContainerObject(j);
 
-				if (child != obj && child != nullptr) {
+				if (child != obj && child != NULL) {
 					if ((objectInThisBuilding || (child->isCreatureObject() && isPublicStructure())) || isStaticBuilding()) {
-						if (child->getCloseObjects() != nullptr)
+						//if (is)
+
+						if (child->getCloseObjects() != NULL)
 							child->addInRangeObject(obj, false);
 						else
 							child->notifyInsert(obj);
 
-						child->sendTo(scno, true, false);
+						child->sendTo(scno, true, false);//sendTo because notifyInsert doesnt send objects with parent
 
-						if (scno->getCloseObjects() != nullptr)
+						if (scno->getCloseObjects() != NULL)
 							scno->addInRangeObject(child, false);
 						else
 							scno->notifyInsert(child);
 
-						if (scno->getParent() != nullptr)
+						if (scno->getParent() != NULL)
 							scno->sendTo(child, true, false);
 					} else if (!scno->isCreatureObject() && !child->isCreatureObject()) {
 						child->notifyInsert(obj);
@@ -513,103 +460,38 @@ void BuildingObjectImplementation::notifyInsert(QuadTreeEntry* obj) {
 					}
 				}
 			}
-		} catch (Exception& e) {
-			warning(e.getMessage());
-			e.printStackTrace();
+		} catch (...) {
+
 		}
 	}
 }
 
 void BuildingObjectImplementation::notifyDissapear(QuadTreeEntry* obj) {
-#if DEBUG_COV
-	if (getObjectID() == 88) { // Theed Cantina
-		info("BuildingObjectImplementation::notifyDissapear(" + String::valueOf(obj->getObjectID()) + ")", true);
+	SceneObject* scno = cast<SceneObject*>( obj);
+	//remove when done
+	//return;
 
-		auto c = static_cast<CreatureObject*>(obj);
-
-		if (c != nullptr)
-			c->info("BuildingObjectImplementation::notifyDissapear from " + String::valueOf(getObjectID()), true);
-	}
-#endif // DEBUG_COV
+	//	removeNotifiedSentObject(scno);
 
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		CellObject* cell = cells.get(i);
 
 		if (!cell->isContainerLoaded())
 			continue;
 
 		for (int j = 0; j < cell->getContainerObjectsSize(); ++j) {
-			auto child = cell->getContainerObject(j);
+			ManagedReference<SceneObject*> child = cell->getContainerObject(j);
 
-			if (child == nullptr)
+			if (child == NULL)
 				continue;
 
-			if (child->getCloseObjects() != nullptr)
+			if (child->getCloseObjects() != NULL)
 				child->removeInRangeObject(obj);
-			else
-				child->notifyDissapear(obj);
 
-			if (obj->getCloseObjects() != nullptr)
+			if (obj->getCloseObjects() != NULL)
 				obj->removeInRangeObject(child);
-			else
-				obj->notifyDissapear(child);
 		}
 	}
-}
-
-void BuildingObjectImplementation::notifyPositionUpdate(QuadTreeEntry* entry) {
-#if ! COV_BUILDING_QUAD_RANGE
-	StructureObjectImplementation::notifyPositionUpdate(entry);
-	return;
-#else // COV_BUILDING_QUAD_RANGE
-#if DEBUG_COV_VERBOSE
-	if (getObjectID() == 88) { // Theed Cantina
-		info("BuildingObjectImplementation::notifyPositionUpdate(" + String::valueOf(entry->getObjectID()) + ")", true);
-
-		auto c = static_cast<CreatureObject*>(entry);
-
-		if (c != nullptr)
-			c->info("BuildingObjectImplementation::notifyPositionUpdate to " + String::valueOf(getObjectID()), true);
-	}
-#endif // DEBUG_COV_VERBOSE
-
-	auto scno = static_cast<SceneObject*>(entry);
-
-	bool objectInThisBuilding = scno->getRootParent() == asBuildingObject();
-
-	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
-
-		if (!cell->isContainerLoaded())
-			continue;
-
-		try {
-			for (int j = 0; j < cell->getContainerObjectsSize(); ++j) {
-				auto child = cell->getContainerObject(j);
-
-				if (child != entry && child != nullptr) {
-					if ((objectInThisBuilding || (child->isCreatureObject() && isPublicStructure())) || isStaticBuilding()) {
-						if (child->getCloseObjects() != nullptr)
-							child->addInRangeObject(entry);
-						else
-							child->notifyPositionUpdate(entry);
-
-						if (entry->getCloseObjects() != nullptr)
-							entry->addInRangeObject(child);
-						else
-							entry->notifyPositionUpdate(child);
-					} else if (!scno->isCreatureObject() && !child->isCreatureObject()) {
-						child->notifyPositionUpdate(entry);
-						entry->notifyPositionUpdate(child);
-					}
-				}
-			}
-		} catch (Exception& e) {
-			warning(e.getMessage());
-			e.printStackTrace();
-		}
-	}
-#endif // COV_BUILDING_QUAD_RANGE
 }
 
 void BuildingObjectImplementation::insert(QuadTreeEntry* entry) {
@@ -647,18 +529,18 @@ void BuildingObjectImplementation::addCell(CellObject* cell, uint32 cellNumber) 
 CellObject* BuildingObjectImplementation::getCell(const String& cellName) {
 	SharedBuildingObjectTemplate* buildingTemplate = templateObject.castTo<SharedBuildingObjectTemplate*>();
 
-	if (buildingTemplate == nullptr)
-		return nullptr;
+	if (buildingTemplate == NULL)
+		return NULL;
 
-	const PortalLayout* portalLayout = buildingTemplate->getPortalLayout();
+	PortalLayout* portalLayout = buildingTemplate->getPortalLayout();
 
-	if (portalLayout == nullptr)
-		return nullptr;
+	if (portalLayout == NULL)
+		return NULL;
 
 	int index = portalLayout->getCellID(cellName);
 
 	if (index == -1 || index == 0)
-		return nullptr;
+		return NULL;
 
 	return getCell(index);
 }
@@ -670,20 +552,20 @@ void BuildingObjectImplementation::destroyObjectFromDatabase(
 	float y = getPositionY();
 	float z = 0;
 
-	if (zone != nullptr)
+	if (zone != NULL)
 		z = zone->getHeight(x, y);
 
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		CellObject* cell = cells.get(i);
 
 		for (int j = cell->getContainerObjectsSize() - 1; j >= 0 ; --j) {
-			auto child = cell->getContainerObject(j);
+			ManagedReference<SceneObject*> child = cell->getContainerObject(j);
 
 			if (child->isPlayerCreature()) {
 				child->teleport(x, z, y);
 
 				if (cell->hasObjectInContainer(child->getObjectID())) {
-					cell->removeObject(child, nullptr, true);
+					cell->removeObject(child, NULL, true);
 				}
 			}
 		}
@@ -698,28 +580,28 @@ void BuildingObjectImplementation::destroyObjectFromDatabase(
 	ManagedReference<SceneObject*> deed = getZoneServer()->getObject(
 			deedObjectID);
 
-	if (deed != nullptr)
+	if (deed != NULL)
 		deed->destroyObjectFromDatabase(true);
 
-	if (signObject != nullptr)
+	if (signObject != NULL)
 		signObject->destroyObjectFromDatabase(true);
 
-	//Remove all child creature objects from world
+	//Remove all child creature objects from database
 	for (int i = 0; i < childCreatureObjects.size(); ++i) {
 		ManagedReference<CreatureObject*> child = childCreatureObjects.get(i);
 
-		if (child == nullptr)
+		if (child == NULL)
 			continue;
+          
+          	Locker locker(child);
 
-		Locker locker(child);
-
-		AiAgent* ai = child->asAiAgent();
-
-		if (ai != nullptr) {
+		if (child->isAiAgent()) {
+			AiAgent* ai = child->asAiAgent();
+                  
 			ai->setRespawnTimer(0);
 		}
 
-		child->destroyObjectFromWorld(true);
+		child->destroyObjectFromDatabase(true);
 	}
 
 	//Loop through the cells and delete all objects from the database.
@@ -729,47 +611,47 @@ void BuildingObjectImplementation::broadcastCellPermissions() {
 	CloseObjectsVector* closeObjectsVector = (CloseObjectsVector*) getCloseObjects();
 
 	SortedVector<QuadTreeEntry*> closeObjects;
-	closeObjectsVector->safeCopyReceiversTo(closeObjects, CloseObjectsVector::CREOTYPE);
+	closeObjectsVector->safeCopyTo(closeObjects);
 
 	for (int i = 0; i < closeObjects.size(); ++i) {
-		auto obj = static_cast<SceneObject*>(closeObjects.get(i));
+		ManagedReference<SceneObject*> obj = cast<SceneObject*>( closeObjects.get(i));
 
 		if (obj->isPlayerCreature())
-			updateCellPermissionsTo(static_cast<CreatureObject*>(obj));
+			updateCellPermissionsTo(cast<CreatureObject*>(obj.get()));
 		else if (obj->isVehicleObject() || obj->isMount()) {
-			auto rider = obj->getSlottedObject("rider");
+			SceneObject* rider = obj->getSlottedObject("rider");
 
-			if (rider != nullptr && rider->isPlayerCreature()) {
-				updateCellPermissionsTo(static_cast<CreatureObject*>(rider.get()));
+			if (rider != NULL && rider->isPlayerCreature()) {
+				updateCellPermissionsTo(cast<CreatureObject*>(rider));
 			}
 		}
 	}
 }
 
 void BuildingObjectImplementation::broadcastCellPermissions(uint64 objectid) {
-	auto obj = getZoneServer()->getObject(objectid);
+	ManagedReference<SceneObject*> obj = getZoneServer()->getObject(objectid);
 
-	if (obj == nullptr || !obj->isCellObject() || obj->getParent() != asBuildingObject())
+	if (obj == NULL || !obj->isCellObject() || obj->getParent() != asBuildingObject())
 		return;
 
-	CellObject* cell = static_cast<CellObject*>(obj.get());
+	CellObject* cell = obj.castTo<CellObject*>();
 
-	CloseObjectsVector* closeObjectsVector = getCloseObjects();
+	CloseObjectsVector* closeObjectsVector = (CloseObjectsVector*) getCloseObjects();
 
 	SortedVector<QuadTreeEntry*> closeObjects;
-	closeObjectsVector->safeCopyReceiversTo(closeObjects, CloseObjectsVector::CREOTYPE);
+	closeObjectsVector->safeCopyTo(closeObjects);
 
 	for (int i = 0; i < closeObjects.size(); ++i) {
-		ManagedReference<SceneObject*> obj = static_cast<SceneObject*>( closeObjects.get(i));
+		ManagedReference<SceneObject*> obj = cast<SceneObject*>( closeObjects.get(i));
 
 		if (obj->isPlayerCreature()) {
-			CreatureObject* creo = static_cast<CreatureObject*>(obj.get());
+			CreatureObject* creo = obj.castTo<CreatureObject*>();
 			cell->sendPermissionsTo(creo, isAllowedEntry(creo));
 		} else if (obj->isVehicleObject() || obj->isMount()) {
 			SceneObject* rider = obj->getSlottedObject("rider");
 
-			if (rider != nullptr && rider->isPlayerCreature()) {
-				CreatureObject* creo = static_cast<CreatureObject*>(rider);
+			if (rider != NULL && rider->isPlayerCreature()) {
+				CreatureObject* creo = cast<CreatureObject*>(rider);
 				cell->sendPermissionsTo(creo, isAllowedEntry(creo));
 			}
 		}
@@ -785,9 +667,9 @@ void BuildingObjectImplementation::updateCellPermissionsTo(CreatureObject* creat
 	}
 
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		ManagedReference<CellObject*> cell = cells.get(i);
 
-		if (cell == nullptr)
+		if (cell == NULL)
 			continue;
 
 		cell->sendPermissionsTo(creature, allowEntry);
@@ -797,7 +679,7 @@ void BuildingObjectImplementation::updateCellPermissionsTo(CreatureObject* creat
 void BuildingObjectImplementation::ejectObject(CreatureObject* creature) {
 	PlayerObject* ghost = creature->getPlayerObject();
 
-	if (ghost != nullptr && ghost->hasGodMode())
+	if (ghost != NULL && ghost->hasGodMode())
 		return;
 
 	Vector3 ejectionPoint = getEjectionPoint();
@@ -811,10 +693,10 @@ void BuildingObjectImplementation::ejectObject(CreatureObject* creature) {
 }
 
 void BuildingObjectImplementation::onEnter(CreatureObject* player) {
-	if (player == nullptr || !player->isPlayerCreature())
+	if (player == NULL || !player->isPlayerCreature())
 		return;
 
-	if (getZone() == nullptr)
+	if (getZone() == NULL)
 		return;
 
 	addTemplateSkillMods(player);
@@ -828,19 +710,12 @@ void BuildingObjectImplementation::onEnter(CreatureObject* player) {
 		}
 	}
 
-	EnclaveContainerComponent* encComp = containerComponent.castTo<EnclaveContainerComponent*>();
-
-	if (encComp != nullptr && !encComp->checkContainerPermission(asBuildingObject(), player, ContainerPermissions::WALKIN)) {
-		ejectObject(player);
-		return;
-	}
-
 	if (accessFee > 0 && !isOnEntryList(player)) {
 		//thread safety issues!
 		if (paidAccessList.contains(player->getObjectID())) {
 			uint32 expireTime = paidAccessList.get(player->getObjectID());
 
-			if(expireTime <= time(nullptr)) {
+			if(expireTime <= time(0)) {
 				paidAccessList.drop(player->getObjectID());
 
 				promptPayAccessFee(player);
@@ -858,10 +733,13 @@ void BuildingObjectImplementation::onEnter(CreatureObject* player) {
 		}
 	}
 
-	notifyObservers(ObserverEventType::ENTEREDBUILDING, player, 0);
+	int i = 0;
+
+	notifyObservers(ObserverEventType::ENTEREDBUILDING, player, i);
 
 	//If they are inside, and aren't allowed to be, then kick them out!
 	if (!isClientObject() && (!isAllowedEntry(player) || isCondemned())) {
+		i = 1;
 		ejectObject(player);
 
 		//TODO: Redo this.
@@ -888,10 +766,10 @@ void BuildingObjectImplementation::onEnter(CreatureObject* player) {
 }
 
 void BuildingObjectImplementation::onExit(CreatureObject* player, uint64 parentid) {
-	if (player == nullptr)
+	if (player == NULL)
 		return;
 
-	if (getZone() == nullptr)
+	if (getZone() == NULL)
 		return;
 
 	removeTemplateSkillMods(player);
@@ -902,12 +780,11 @@ void BuildingObjectImplementation::onExit(CreatureObject* player, uint64 parenti
 }
 
 uint32 BuildingObjectImplementation::getMaximumNumberOfPlayerItems() {
+	SharedStructureObjectTemplate* ssot = dynamic_cast<SharedStructureObjectTemplate*> (templateObject.get());
 	if (isCivicStructure() )
 		return 250;
 
-	SharedStructureObjectTemplate* ssot = dynamic_cast<SharedStructureObjectTemplate*> (templateObject.get());
-
-	if (ssot == nullptr)
+	if (ssot == NULL)
 		return 0;
 	//This sets the item limit for City Halls and Cloning Centers to 250 like they were during live, instead of 400 like they are now from the line below.
 
@@ -923,23 +800,23 @@ uint32 BuildingObjectImplementation::getMaximumNumberOfPlayerItems() {
 }
 
 int BuildingObjectImplementation::notifyObjectInsertedToChild(SceneObject* object, SceneObject* child, SceneObject* oldParent) {
-	Zone* zone = getZone();
+	ManagedReference<Zone*> zone = getZone();
 
-	Locker* _locker = nullptr;
+	Locker* _locker = NULL;
 
-	if (zone != nullptr)
+	if (zone != NULL)
 		_locker = new Locker(zone);
 
 	try {
-		if (object->getCloseObjects() != nullptr)
+		if (object->getCloseObjects() != NULL)
 			object->addInRangeObject(object, false);
 
 		if (child->isCellObject()) {
 			bool runInRange = true;
 
-			if ((oldParent == nullptr || !oldParent->isCellObject()) || oldParent == child) {
+			if ((oldParent == NULL || !oldParent->isCellObject()) || oldParent == child) {
 
-				if (oldParent == nullptr || (oldParent != nullptr && dynamic_cast<Zone*>(oldParent) == nullptr && !oldParent->isCellObject())) {
+				if (oldParent == NULL || (oldParent != NULL && dynamic_cast<Zone*>(oldParent) == NULL && !oldParent->isCellObject())) {
 					notifyObjectInsertedToZone(object);
 					runInRange = false;
 				}
@@ -951,14 +828,15 @@ int BuildingObjectImplementation::notifyObjectInsertedToChild(SceneObject* objec
 			}
 
 			if (runInRange) {
-				CellObject* cell = static_cast<CellObject*>(child);
+				ManagedReference<CellObject*> cell = cast<CellObject*>(child);
 
-				if (cell != nullptr) {
+				if (cell != NULL) {
 					for (int j = 0; j < cell->getContainerObjectsSize(); ++j) {
 						ManagedReference<SceneObject*> cobj = cell->getContainerObject(j);
 
 						if (cobj != object) {
-							if (cobj->getCloseObjects() != nullptr) {
+
+							if (cobj->getCloseObjects() != NULL) {
 								if (!cobj->getCloseObjects()->contains(object)) {
 									cobj->addInRangeObject(object, false);
 									object->sendTo(cobj, true, false);
@@ -966,12 +844,12 @@ int BuildingObjectImplementation::notifyObjectInsertedToChild(SceneObject* objec
 							} else
 								cobj->notifyInsert(object);
 
-							if (object->getCloseObjects() != nullptr) {
+							if (object->getCloseObjects() != NULL) {
 								if (!object->getCloseObjects()->contains(cobj.get())) {
 									object->addInRangeObject(cobj.get(), false);
 									cobj->sendTo(object, true, false);//sendTo because notifyInsert doesnt send objects with parent
 								} else {
-									if (object->getClient() != nullptr && cobj->isCreatureObject()) {
+									if (object->getClient() != NULL && cobj->isCreatureObject()) {
 										object->sendMessage(cobj->link(cell->getObjectID(), -1));
 									}
 								}
@@ -990,12 +868,11 @@ int BuildingObjectImplementation::notifyObjectInsertedToChild(SceneObject* objec
 		e.printStackTrace();
 	}
 
-	if (zone != nullptr) {
+	if (zone != NULL) {
 		delete _locker;
 
-		TangibleObject* tano = object->asTangibleObject();
-
-		if (tano != nullptr) {
+		if (object->isTangibleObject()) {
+			TangibleObject* tano = object->asTangibleObject();
 			zone->updateActiveAreas(tano);
 		}
 	}
@@ -1004,14 +881,33 @@ int BuildingObjectImplementation::notifyObjectInsertedToChild(SceneObject* objec
 }
 
 int BuildingObjectImplementation::notifyObjectRemovedFromChild(SceneObject* object, SceneObject* child) {
+	/*SceneObject* parent = sceneObject->getParent();
+	Zone* zone = sceneObject->getZone();
+
+	if (!parent->isCellObject())
+		return;
+
+	if (building != parent->getParent()) {
+		error("removing from wrong building object");
+		return;
+	}
+
+    sceneObject->broadcastMessage(sceneObject->link((uint64)0, (uint32)0xFFFFFFFF), true, false);*/
+
+	//parent->removeObject(sceneObject, false);
+
+
 	remove(object);
+
+	//    	building->removeNotifiedSentObject(sceneObject);
+
 
 	return 0;
 }
 
 void BuildingObjectImplementation::destroyAllPlayerItems() {
 	for (int i = 0; i < cells.size(); ++i) {
-		auto& cell = cells.get(i);
+		ManagedReference<CellObject*> cell = cells.get(i);
 
 		cell->destroyAllPlayerItems();
 	}
@@ -1021,20 +917,18 @@ void BuildingObjectImplementation::updateSignName(bool notifyClient)  {
 	//TODO: Fix sign object to handle string id's.
 	String condemned = "@player_structure:fix_condemned_title";
 	UnicodeString signNameToSet = StringIdManager::instance()->getStringId(condemned.hashCode());
-
 	if (!isCondemned()) {
 		signNameToSet = signName;
 	}
 
-	if (signObject != nullptr) {
+	if (signObject != NULL) {
 		signObject->setCustomObjectName(signNameToSet, notifyClient);
 	}
 }
 
 bool BuildingObjectImplementation::isInPlayerCity() {
 	ManagedReference<CityRegion*> city = this->getCityRegion().get();
-
-	if (city != nullptr) {
+	if (city != NULL) {
 		return (!city->isClientRegion());
 	}
 
@@ -1042,12 +936,12 @@ bool BuildingObjectImplementation::isInPlayerCity() {
 }
 
 bool BuildingObjectImplementation::canPlayerRegisterWithin() {
-	const PlanetMapCategory* pmc = getPlanetMapSubCategory();
+	PlanetMapCategory* pmc = getPlanetMapSubCategory();
 
-	if (pmc == nullptr)
+	if (pmc == NULL)
 		pmc = getPlanetMapCategory();
 
-	if (pmc == nullptr)
+	if (pmc == NULL)
 		return false;
 
 	String categoryName = pmc->getName();
@@ -1057,7 +951,7 @@ bool BuildingObjectImplementation::canPlayerRegisterWithin() {
 	if (categoryName == "imperial_hq" || categoryName == "rebel_hq") {
 		SharedBuildingObjectTemplate* buildingTemplate = cast<SharedBuildingObjectTemplate*>(getObjectTemplate());
 
-		if (buildingTemplate == nullptr) {
+		if (buildingTemplate == NULL) {
 			return false;
 		}
 
@@ -1070,7 +964,7 @@ bool BuildingObjectImplementation::canPlayerRegisterWithin() {
 }
 
 void BuildingObjectImplementation::registerProfessional(CreatureObject* player) {
-	if(!player->isPlayerCreature() || getZone() == nullptr)
+	if(!player->isPlayerCreature() || getZone() == NULL)
 		return;
 
 	if(!registeredPlayerIdList.contains(player->getObjectID())) {
@@ -1112,7 +1006,7 @@ void BuildingObjectImplementation::registerProfessional(CreatureObject* player) 
 }
 
 void BuildingObjectImplementation::unregisterProfessional(CreatureObject* player) {
-	if(!player->isPlayerCreature() || getZone() == nullptr)
+	if(!player->isPlayerCreature() || getZone() == NULL)
 		return;
 
 	if (registeredPlayerIdList.drop(player->getObjectID())) {
@@ -1133,7 +1027,7 @@ void BuildingObjectImplementation::promptPayAccessFee(CreatureObject* player) {
 
 	PlayerObject* ghost = player->getPlayerObject();
 
-	if (ghost == nullptr)
+	if (ghost == NULL)
 		return;
 
 	if (ghost->hasSuiBoxWindowType(SuiWindowType::STRUCTURE_CONSENT_PAY_ACCESS_FEE))
@@ -1166,22 +1060,16 @@ void BuildingObjectImplementation::payAccessFee(CreatureObject* player) {
 		return;
 	}
 
-	ManagedReference<CreatureObject*> owner = getOwnerCreatureObject();
-
-	TransactionLog trx(player, owner, TrxCode::ACCESSFEE, accessFee, true);
-	trx.setAutoCommit(false);
-
 	player->subtractCashCredits(accessFee);
 
-	if (owner != nullptr) {
+	ManagedReference<CreatureObject*> owner = getOwnerCreatureObject();
+
+	if (owner != NULL) {
 		Locker clocker(owner, player);
 		owner->addBankCredits(accessFee, true);
 	} else {
 		error("Unable to pay access fee credits to owner");
-		trx.errorMessage() << "Unable to pay access fee to owner";
 	}
-
-	trx.commit();
 
 	if (paidAccessList.contains(player->getObjectID()))
 		paidAccessList.drop(player->getObjectID());
@@ -1190,12 +1078,12 @@ void BuildingObjectImplementation::payAccessFee(CreatureObject* player) {
 
 	accessLock.release();
 
-	if (owner != nullptr && owner->isPlayerCreature()) {
+	if (owner != NULL && owner->isPlayerCreature()) {
 		Locker clocker(owner, player);
 
 		PlayerObject* ghost = owner->getPlayerObject();
 
-		if (ghost != nullptr)
+		if (ghost != NULL)
 			ghost->addExperience("merchant", 50, true);
 	}
 
@@ -1241,7 +1129,7 @@ void BuildingObjectImplementation::updatePaidAccessList() {
 	for (int i = 0; i < ejectList.size(); ++i) {
 		paidAccessList.drop(ejectList.get(i));
 		ManagedReference<CreatureObject*> creature = server->getZoneServer()->getObject(ejectList.get(i)).castTo<CreatureObject*>();
-		if (creature != nullptr && creature->getRootParent() == asBuildingObject()) {
+		if (creature != NULL && creature->getRootParent() == asBuildingObject()) {
 			creature->sendSystemMessage("@player_structure:turnstile_expire"); // You have been ejected because your access expired
 			ejectObject(creature);
 		}
@@ -1250,7 +1138,7 @@ void BuildingObjectImplementation::updatePaidAccessList() {
 	Reference<Task*> pendingTask = getPendingTask("revokepaidstructureaccess");
 
 	if (paidAccessList.isEmpty()) {
-		if(pendingTask != nullptr && pendingTask->isScheduled()) {
+		if(pendingTask != NULL && pendingTask->isScheduled()) {
 			pendingTask->cancel();
 		}
 		removePendingTask("revokepaidstructureaccess");
@@ -1259,7 +1147,7 @@ void BuildingObjectImplementation::updatePaidAccessList() {
 
 	int timeToSchedule = (nextExpirationTime - time(0)) * 1000;
 
-	if (pendingTask == nullptr) {
+	if (pendingTask == NULL) {
 		pendingTask = new RevokePaidAccessTask(asBuildingObject());
 		addPendingTask("revokepaidstructureaccess", pendingTask, timeToSchedule);
 	} else {
@@ -1273,32 +1161,32 @@ void BuildingObjectImplementation::createChildObjects() {
 
 		SharedObjectTemplate* serverTemplate = getObjectTemplate();
 
-		if (serverTemplate == nullptr)
+		if (serverTemplate == NULL)
 			return;
 
 		Vector3 position = getPosition();
 
 		ZoneServer* server = getZoneServer();
 
-		if (server == nullptr)
+		if (server == NULL)
 			return;
 
 		Zone* thisZone = asBuildingObject()->getZone();
 
-		if (thisZone == nullptr)
+		if (thisZone == NULL)
 			return;
 
 		GCWManager* gcwMan = thisZone->getGCWManager();
 
 		for (int i = 0; i < serverTemplate->getChildObjectsSize();i++) {
-			const ChildObject* child = serverTemplate->getChildObject(i);
+			ChildObject* child = serverTemplate->getChildObject(i);
 
-			if (child == nullptr)
+			if (child == NULL)
 				continue;
 
 			SharedObjectTemplate* thisTemplate = TemplateManager::instance()->getTemplate(child->getTemplateFile().hashCode());
 
-			if (thisTemplate == nullptr || thisTemplate->getGameObjectType() == SceneObjectType::NPCCREATURE || thisTemplate->getGameObjectType() == SceneObjectType::CREATURE)
+			if (thisTemplate == NULL || thisTemplate->getGameObjectType() == SceneObjectType::NPCCREATURE || thisTemplate->getGameObjectType() == SceneObjectType::CREATURE)
 				continue;
 
 
@@ -1309,7 +1197,7 @@ void BuildingObjectImplementation::createChildObjects() {
 
 			ManagedReference<SceneObject*> obj = server->createObject(child->getTemplateFile().hashCode(), dbString, getPersistenceLevel());
 
-			if (obj == nullptr)
+			if (obj == NULL)
 				continue;
 
 			Locker crossLocker(obj, asBuildingObject());
@@ -1331,15 +1219,15 @@ void BuildingObjectImplementation::createChildObjects() {
 
 				try {
 					if (totalCells >= child->getCellId()) {
-						CellObject* cellObject = getCell(child->getCellId());
+						ManagedReference<CellObject*> cellObject = getCell(child->getCellId());
 
-						if (cellObject != nullptr) {
+						if (cellObject != NULL) {
 							if (!cellObject->transferObject(obj, child->getContainmentType(), true)) {
 								obj->destroyObjectFromDatabase(true);
 							}
 						} else {
 							obj->destroyObjectFromDatabase(true);
-							error("nullptr CELL OBJECT");
+							error("NULL CELL OBJECT");
 						}
 					}
 				} catch (Exception& e) {
@@ -1348,13 +1236,13 @@ void BuildingObjectImplementation::createChildObjects() {
 				}
 
 			} else {
-				if ((obj->isTurret() || obj->isMinefield() || obj->isDetector()) && gcwMan != nullptr && !gcwMan->shouldSpawnDefenses()) {
+				if ((obj->isTurret() || obj->isMinefield() || obj->isDetector()) && gcwMan != NULL && !gcwMan->shouldSpawnDefenses()) {
 					if (obj->isTurret())
-						gcwMan->addTurret(asBuildingObject(), nullptr);
+						gcwMan->addTurret(asBuildingObject(), NULL);
 					else if (obj->isMinefield())
-						gcwMan->addMinefield(asBuildingObject(), nullptr);
+						gcwMan->addMinefield(asBuildingObject(), NULL);
 					else if (obj->isDetector())
-						gcwMan->addScanner(asBuildingObject(), nullptr);
+						gcwMan->addScanner(asBuildingObject(), NULL);
 
 					obj->destroyObjectFromDatabase(true);
 					continue;
@@ -1382,16 +1270,16 @@ void BuildingObjectImplementation::createChildObjects() {
 
 			if (obj->isTurretControlTerminal()) {
 				DataObjectComponentReference* data  = obj->getDataObjectComponent();
-				if (data != nullptr) {
+				if (data != NULL) {
 					TurretControlTerminalDataComponent* controlData = cast<TurretControlTerminalDataComponent*>(data->get());
-					if (controlData != nullptr) {
+					if (controlData != NULL) {
 						controlData->setTurretIndex(controlIndex);
 						controlIndex++;
 					}
 				}
 			}
 
-			ContainerPermissions* permissions = obj->getContainerPermissionsForUpdate();
+			ContainerPermissions* permissions = obj->getContainerPermissions();
 			permissions->setOwner(getObjectID());
 			permissions->setInheritPermissionsFromParent(false);
 			permissions->setDefaultDenyPermission(ContainerPermissions::MOVECONTAINER);
@@ -1399,18 +1287,18 @@ void BuildingObjectImplementation::createChildObjects() {
 
 			if (obj->isTurret() || obj->isMinefield() || obj->isDetector()) {
 				TangibleObject* tano = cast<TangibleObject*>(obj.get());
-				if (tano != nullptr) {
+				if (tano != NULL) {
 					tano->setFaction(getFaction());
 					tano->setDetailedDescription("DEFAULT BASE TURRET");
 					tano->setPvpStatusBitmask(getPvpStatusBitmask() | tano->getPvpStatusBitmask());
 				}
 
 				InstallationObject* installation = cast<InstallationObject*>(obj.get());
-				if (installation != nullptr) {
+				if (installation != NULL) {
 					installation->setOwner(getObjectID());
 				}
 
-				if (gcwMan != nullptr) {
+				if (gcwMan != NULL) {
 					if (obj->isTurret())
 						gcwMan->addTurret(asBuildingObject(), obj);
 					else if (obj->isMinefield())
@@ -1431,17 +1319,17 @@ void BuildingObjectImplementation::createChildObjects() {
 void BuildingObjectImplementation::spawnChildSceneObject(String& templatePath, float x, float z, float y, unsigned long long cellID, float dw, float dx, float dy, float dz) {
 	ZoneServer* zoneServer = getZoneServer();
 
-	if (zoneServer == nullptr)
+	if (zoneServer == NULL)
 		return;
 
 	Zone* zone = asBuildingObject()->getZone();
 
-	if (zone == nullptr)
+	if (zone == NULL)
 		return;
 
 	ManagedReference<SceneObject*> object = zoneServer->createObject(templatePath.hashCode(), getPersistenceLevel());
 
-	if (object == nullptr || object->isCreatureObject())
+	if (object == NULL || object->isCreatureObject())
 		return;
 
 	Locker objLocker(object);
@@ -1449,17 +1337,17 @@ void BuildingObjectImplementation::spawnChildSceneObject(String& templatePath, f
 	object->initializePosition(x, z, y);
 	object->setDirection(dw, dx, dy, dz);
 
-	Reference<SceneObject*> cell = nullptr;
+	Reference<SceneObject*> cell = NULL;
 
 	if (cellID != 0) {
 		cell = zoneServer->getObject(cellID);
 
-		if (cell != nullptr && !cell->isCellObject()) {
-			cell = nullptr;
+		if (cell != NULL && !cell->isCellObject()) {
+			cell = NULL;
 		}
 	}
 
-	if (cell != nullptr) {
+	if (cell != NULL) {
 		cell->transferObject(object, -1);
 	} else {
 		zone->transferObject(object, -1, true);
@@ -1473,18 +1361,18 @@ void BuildingObjectImplementation::spawnChildSceneObject(String& templatePath, f
 void BuildingObjectImplementation::spawnChildCreaturesFromTemplate() {
 	SharedBuildingObjectTemplate* buildingTemplate = cast<SharedBuildingObjectTemplate*>(getObjectTemplate());
 
-	if (buildingTemplate == nullptr)
+	if (buildingTemplate == NULL)
 		return;
 
 	CreatureManager* creatureManager = zone->getCreatureManager();
-	if (creatureManager == nullptr)
+	if (creatureManager == NULL)
 		return;
 
 	for (int i = 0; i < buildingTemplate->getChildCreatureObjectsSize(); i++) {
 		ChildCreatureObject* child = buildingTemplate->getChildCreatureObject(i);
-		CreatureObject* creature = nullptr;
+		CreatureObject* creature = NULL;
 
-		if (child != nullptr) {
+		if (child != NULL) {
 			Vector3 childPosition = child->getPosition();
 
 			// if it's inside
@@ -1494,10 +1382,10 @@ void BuildingObjectImplementation::spawnChildCreaturesFromTemplate() {
 				try {
 					if (totalCells >= child->getCellId()) {
 						ManagedReference<CellObject*> cellObject = getCell(child->getCellId());
-						if (cellObject != nullptr) {
+						if (cellObject != NULL) {
 							creature = creatureManager->spawnCreatureWithAi(child->getMobile().hashCode(), childPosition.getX(), childPosition.getZ(), childPosition.getY(), cellObject->getObjectID(), false);
 						} else
-							error("nullptr CELL OBJECT");
+							error("NULL CELL OBJECT");
 					}
 
 				} catch (Exception& e) {
@@ -1522,7 +1410,7 @@ void BuildingObjectImplementation::spawnChildCreaturesFromTemplate() {
 				creature = creatureManager->spawnCreatureWithAi(mobilename.hashCode(), x, z, y, 0, false);
 			}
 
-			if (creature == nullptr)
+			if (creature == NULL)
 				continue;
 
 			Locker clocker(creature, asBuildingObject());
@@ -1542,12 +1430,12 @@ void BuildingObjectImplementation::spawnChildCreaturesFromTemplate() {
 void BuildingObjectImplementation::spawnChildCreature(String& mobile, int respawnTimer, float x, float z, float y, float heading, unsigned long long cellID) {
 	CreatureManager* creatureManager = zone->getCreatureManager();
 
-	if (creatureManager == nullptr)
+	if (creatureManager == NULL)
 		return;
 
 	CreatureObject* creature = creatureManager->spawnCreatureWithAi(mobile.hashCode(), x, z, y, cellID, false);
 
-	if (creature == nullptr)
+	if (creature == NULL)
 		return;
 
 	Locker clocker(creature, asBuildingObject());
@@ -1562,10 +1450,10 @@ void BuildingObjectImplementation::spawnChildCreature(String& mobile, int respaw
 	childCreatureObjects.put(creature);
 }
 
-bool BuildingObjectImplementation::hasTemplateChildCreatures() const {
+bool BuildingObjectImplementation::hasTemplateChildCreatures() {
 	SharedBuildingObjectTemplate* buildingTemplate = cast<SharedBuildingObjectTemplate*>(getObjectTemplate());
 
-	if (buildingTemplate == nullptr)
+	if (buildingTemplate == NULL)
 		return false;
 
 	return buildingTemplate->getChildCreatureObjectsSize() > 0;
@@ -1577,7 +1465,7 @@ void BuildingObjectImplementation::destroyChildObjects() {
 	for (int i = 0; i < size; i++) {
 		ManagedReference<SceneObject*> child = childObjects.get(0);
 
-		if (child == nullptr)
+		if (child == NULL)
 			continue;
 
 		Locker clocker(child, asBuildingObject());
@@ -1592,7 +1480,7 @@ void BuildingObjectImplementation::destroyChildObjects() {
 	for (int i = 0; i < size; i++) {
 		ManagedReference<CreatureObject*> child = childCreatureObjects.get(0);
 
-		if (child == nullptr)
+		if (child == NULL)
 			continue;
 
 		Locker clocker(child, asBuildingObject());
@@ -1603,21 +1491,21 @@ void BuildingObjectImplementation::destroyChildObjects() {
 		}
 
 		childCreatureObjects.drop(child);
-		child->destroyObjectFromWorld(true);
+		child->destroyObjectFromDatabase(true);
 	}
 }
 
-void BuildingObjectImplementation::changeSign(const SignTemplate* signConfig) {
-	if (signConfig == nullptr)
+void BuildingObjectImplementation::changeSign(SignTemplate* signConfig) {
+	if (signConfig == NULL)
 		return;
 
-	if (getZone() == nullptr)
+	if (getZone() == NULL)
 		return;
 
 	ZoneServer* zoneServer = getZone()->getZoneServer();
 
 	ManagedReference<SceneObject*> signSceno = zoneServer->createObject(signConfig->getTemplateFile().hashCode(), getPersistenceLevel());
-	if (signSceno == nullptr)
+	if (signSceno == NULL)
 		return;
 
 	if (!signSceno->isSignObject()) {
@@ -1626,7 +1514,7 @@ void BuildingObjectImplementation::changeSign(const SignTemplate* signConfig) {
 	}
 
 	ManagedReference<SignObject*> signObject = signSceno.castTo<SignObject*>();
-	if (signObject == nullptr) {
+	if (signObject == NULL) {
 		signSceno->destroyObjectFromDatabase(true);
 		return;
 	}
@@ -1661,7 +1549,7 @@ void BuildingObjectImplementation::changeSign(const SignTemplate* signConfig) {
 	getZone()->transferObject(signObject, -1, false);
 
 	// Set sign permissions
-	ContainerPermissions* permissions = signSceno->getContainerPermissionsForUpdate();
+	ContainerPermissions* permissions = signSceno->getContainerPermissions();
 	permissions->setOwner(getObjectID());
 	permissions->setInheritPermissionsFromParent(false);
 	permissions->setDefaultDenyPermission(ContainerPermissions::MOVECONTAINER);
@@ -1673,7 +1561,7 @@ void BuildingObjectImplementation::changeSign(const SignTemplate* signConfig) {
 	UnicodeString signName = "@sign_name:sign";
 	SignObject* oldSign = getSignObject();
 
-	if (oldSign != nullptr) {
+	if (oldSign != NULL) {
 		signName = oldSign->getCustomObjectName();
 
 		Locker clock(oldSign, asBuildingObject());
@@ -1698,14 +1586,14 @@ void BuildingObjectImplementation::changeSign(const SignTemplate* signConfig) {
 bool BuildingObjectImplementation::togglePrivacy() {
 	// If the building is a cantina then we need to add/remove it from the planet's
 	// mission map for performance locations.
-	const PlanetMapCategory* planetMapCategory = getPlanetMapCategory();
-	if (planetMapCategory != nullptr) {
+	PlanetMapCategory* planetMapCategory = getPlanetMapCategory();
+	if (planetMapCategory != NULL) {
 		String planetMapCategoryName = planetMapCategory->getName();
 		if (planetMapCategoryName == "cantina") {
 			Zone* zone = getZone();
-			if (zone != nullptr) {
+			if (zone != NULL) {
 				PlanetManager* planetManager = zone->getPlanetManager();
-				if (planetManager != nullptr) {
+				if (planetManager != NULL) {
 					if (isPublicStructure()) {
 						planetManager->removePerformanceLocation(asSceneObject());
 					}
@@ -1729,7 +1617,7 @@ BuildingObject* BuildingObjectImplementation::asBuildingObject() {
 	return _this.getReferenceUnsafeStaticCast();
 }
 
-Vector<Reference<MeshData*> > BuildingObjectImplementation::getTransformedMeshData(const Matrix4* parentTransform) const {
+Vector<Reference<MeshData*> > BuildingObjectImplementation::getTransformedMeshData(const Matrix4* parentTransform) {
 	Vector<Reference<MeshData*> > data;
 
 	Quaternion directionRecast(direction.getW(), direction.getX(), direction.getY(), -direction.getZ());
@@ -1740,17 +1628,17 @@ Vector<Reference<MeshData*> > BuildingObjectImplementation::getTransformedMeshDa
 
 	const auto fullTransform = transform * *parentTransform;
 
-	const PortalLayout *pl = getObjectTemplate()->getPortalLayout();
+	PortalLayout *pl = getObjectTemplate()->getPortalLayout();
 	if(pl) {
 		if(pl->getCellTotalNumber() > 0) {
-			const AppearanceTemplate *appr = pl->getAppearanceTemplate(0);
-			const FloorMesh *floor = TemplateManager::instance()->getFloorMesh(appr->getFloorMesh());
+			AppearanceTemplate *appr = pl->getAppearanceTemplate(0);
+			FloorMesh *floor = TemplateManager::instance()->getFloorMesh(appr->getFloorMesh());
 
-			if (floor == nullptr) {
+			if (floor == NULL) {
 				floor = pl->getFloorMesh(0);
 			}
 
-			if (floor != nullptr) {
+			if (floor != NULL) {
 				data.addAll(floor->getTransformedMeshData(fullTransform));
 			}
 
@@ -1763,7 +1651,7 @@ Vector<Reference<MeshData*> > BuildingObjectImplementation::getTransformedMeshDa
 				const CellPortal* portal = tmpl->getPortal(i);
 				const MeshData* mesh = pl->getPortalGeometry(portal->getGeometryIndex());
 
-				data.emplace(MeshData::makeCopyNegateZ(mesh, fullTransform));
+				data.emplace(std::move(MeshData::makeCopyNegateZ(mesh, fullTransform)));
 			}
 
 #ifdef RENDER_EXTERNAL_FLOOR_MESHES_ONLY
@@ -1776,18 +1664,18 @@ Vector<Reference<MeshData*> > BuildingObjectImplementation::getTransformedMeshDa
 }
 
 const BaseBoundingVolume* BuildingObjectImplementation::getBoundingVolume() {
-	const PortalLayout *pl = getObjectTemplate()->getPortalLayout();
+	PortalLayout *pl = getObjectTemplate()->getPortalLayout();
 
 	if(pl) {
 		if(pl->getCellTotalNumber() > 0) {
-			const AppearanceTemplate *appr = pl->getAppearanceTemplate(0);
+			AppearanceTemplate *appr = pl->getAppearanceTemplate(0);
 			return appr->getBoundingVolume();
 		}
 	} else {
 		return SceneObjectImplementation::getBoundingVolume();
 	}
 
-	return nullptr;
+	return NULL;
 }
 
 bool BuildingObject::isBuildingObject() {
@@ -1798,29 +1686,3 @@ bool BuildingObjectImplementation::isBuildingObject() {
 	return true;
 }
 
-float BuildingObjectImplementation::getOutOfRangeDistance() const {
-#ifdef COV_BUILDING_QUAD_RANGE
-	return ZoneServer::CLOSEOBJECTRANGE * 4;
-#else // COV_BUILDING_QUAD_RANGE
-	return ZoneServer::CLOSEOBJECTRANGE;
-#endif // COV_BUILDING_QUAD_RANGE
-}
-
-String BuildingObjectImplementation::getCellName(uint64 cellID) const {
-	SharedBuildingObjectTemplate* buildingTemplate = templateObject.castTo<SharedBuildingObjectTemplate*>();
-
-	if (buildingTemplate == nullptr)
-		return "";
-
-	const PortalLayout* portalLayout = buildingTemplate->getPortalLayout();
-
-	if (portalLayout == nullptr)
-		return "";
-
-	const CellProperty* cellProperty = portalLayout->getCellProperty(cellID);
-
-	if (cellProperty == nullptr)
-		return "";
-
-	return cellProperty->getName();
-}

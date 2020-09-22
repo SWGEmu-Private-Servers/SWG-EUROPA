@@ -75,15 +75,9 @@ int LuaSkillManager::getSkill(lua_State* L) {
 		return 0;
 	}
 
-	auto skillName = lua_tostring(L, -1);
+	String skillName = lua_tostring(L, -1);
 
-	if (skillName == nullptr) {
-		Logger::console.error("null skill name passed to LuaSkillManager::getSkill");
-
-		return 0;
-	} else {
-		lua_pushlightuserdata(L, realObject->getSkill(skillName));
-	}
+	lua_pushlightuserdata(L, realObject->getSkill(skillName));
 
 	return 1;
 }
